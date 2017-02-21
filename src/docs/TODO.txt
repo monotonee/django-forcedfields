@@ -1,0 +1,23 @@
+In readme:
+    Why Oracle is not tested
+        Huge download
+            Also required for Docker image
+        Not in package managers
+        Rarely used
+        I hate Oracle
+
+    Backends for which "char" field seem valid:
+        mysql
+        oracle
+        postgresql
+        sqlite3
+        SQL anywhere
+        IBM DB2
+        MS SQL Server
+        Firebird
+
+    Backend behavior for timestamp field
+        MySQL/MariaDB CURRENT_TIMESTAMP default
+        Postgre timestamp without timezone (default Django behavior)
+        sqlite3 datetime (default Django behavior)
+        Oracle?

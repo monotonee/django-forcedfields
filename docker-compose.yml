@@ -1,0 +1,31 @@
+---
+# Docker Compose file to create a MariaDB database instance FOR TESTING ONLY.
+# Sensitive settings are saved in plain text here. Do not use in production.
+#
+# MYSQL_ALLOW_EMPTY_PASSWORD allows empty password for root user.
+# Random ephemeral port chosen on container host to avoid conflicts.
+# If one doesn't want SQLite for testing, this provides an easy alternative.
+#
+# TODO: Consider using apline versions of these images.
+version: '2'
+services:
+  mariadb:
+    image: mariadb:latest
+    ports:
+      - '127.0.0.1:3306:3306'
+    volumes:
+      - ./docker/mariadb/conf.d:/etc/mysql/conf.d:ro
+      - ./docker/mariadb/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_PASSWORD=tester
+      - MYSQL_USER=tester
+  postgresql:
+    image: postgres:latest
+    ports:
+      - '127.0.0.1:5432:5432'
+    environment:
+      - POSTGRES_PASSWORD=tester
+      - POSTGRES_USER=tester
+
+...

@@ -1,0 +1,12 @@
+# Vagrant metadata
+.vagrant
+
+# Ansible
+**/*.retry
+
+# Python
+**/__pycache__
+*.egg-info
+
+# Django
+*.sqlite3
