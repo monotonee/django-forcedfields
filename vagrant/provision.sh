@@ -10,7 +10,7 @@
 # dependencies require user interaction beyond a simple confirmation of yes or
 # no (such as the "java-runtime" virtual package), one may explcitly include
 # them here.
-extra_pkgs=( geany libmariadbclient libxtst python python-pip ttf-dejavu xorg-xauth )
+extra_pkgs=( geany libmariadbclient libxtst postgresql-libs python python-pip ttf-dejavu xorg-xauth )
 aur_pkgs=()
 
 # This script is executed on the guest machine via Vagrant's shell provisioner.
