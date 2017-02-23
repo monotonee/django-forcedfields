@@ -1,6 +1,7 @@
 ---
 # Docker Compose file to create a MariaDB database instance FOR TESTING ONLY.
-# Sensitive settings are saved in plain text here. Do not use in production.
+# Sensitive settings are saved in plain text here and service configurations
+# favor convenience over security. DO NOT USE IN PRODUCTION.
 #
 # MYSQL_ALLOW_EMPTY_PASSWORD allows empty password for root user.
 # Random ephemeral port chosen on container host to avoid conflicts.
@@ -21,7 +22,7 @@ services:
       - MYSQL_PASSWORD=tester
       - MYSQL_USER=tester
   postgresql:
-    image: postgres:latest
+    image: postgres:alpine
     ports:
       - '127.0.0.1:5432:5432'
     environment:

@@ -26,19 +26,18 @@ DATABASES = {
         'PASSWORD': 'tester',
         'PORT': '3306',
         'USER': 'tester',
+    },
+    'postgresql': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': '127.0.0.1',
+        'PASSWORD': 'tester',
+        'PORT': '5432',
+        'USER': 'tester',
+    },
+    'sqlite3': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': '/tmp/django-forcedfields.sqlite3.db',
     }
-    #,
-    #'postgresql': {
-        #'ENGINE': 'django.db.backends.postgresql',
-        #'HOST': '127.0.0.1',
-        #'PASSWORD': 'tester',
-        #'PORT': '5432',
-        #'USER': 'tester',
-    #},
-    #'sqlite3': {
-        #'ENGINE': 'django.db.backends.sqlite3',
-        #'NAME': '/tmp/django-forcedfields.sqlite3.db',
-    #}
 }
 
 #DATABASE_ROUTERS = ['tests.routers.Router']

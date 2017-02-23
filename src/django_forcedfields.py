@@ -17,16 +17,22 @@ class FixedCharField(models.CharField):
     """
     Stores Python strings in fixed-length "char" database fields.
 
+    Django's core CharField class saves all values in varchar data types
+    with no option to use a char data type instead.
+
     CharField's max_length kwarg is kept for simplicity. In this class, the
     value of max_length will be the length of the char field.
 
     """
 
     def db_type(self, connection):
-        #if connection.settings_dict['ENGINE'] == 'django.db.backends.sqlite3':
-            #db_type = super().db_type(connection)
-        #else:
-            #db_type = 'char({!s})'.format(self.max_length)
+        """
+        Override db_type().
+
+        See:
+            https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.db_type
+
+        """
         return 'char({!s})'.format(self.max_length)
 
 
@@ -44,6 +50,7 @@ class TimestampField(models.DateTimeField):
     parts.
 
     See:
+        https://docs.djangoproject.com/en/dev/ref/models/fields/#datefield
         https://www.python.org/dev/peps/pep-0008/#descriptive-naming-styles
 
     """
