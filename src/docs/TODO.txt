@@ -21,3 +21,6 @@ In readme:
         Postgre timestamp without timezone (default Django behavior)
         sqlite3 datetime (default Django behavior)
         Oracle?
+
+Before release:
+    Run style checker and linter
