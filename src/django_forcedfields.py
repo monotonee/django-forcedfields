@@ -193,7 +193,7 @@ class TimestampField(models.DateTimeField):
             if self.auto_now:
                 # CURRENT_TIMESTAMP on create and on update.
                 type_spec.extend([ts_default_default, ts_default_on_update])
-            elif: self.auto_now_add:
+            elif self.auto_now_add:
                 # CURRENT_TIMESTAMP on create only.
                 type_spec.append(ts_default_default)
             elif self.has_default():
