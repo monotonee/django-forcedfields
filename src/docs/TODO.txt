@@ -17,10 +17,20 @@ In readme:
         Firebird
 
     Backend behavior for timestamp field
-        MySQL/MariaDB CURRENT_TIMESTAMP default
+        New auto_now_update keyword arg
+        MySQL/MariaDB combinations
+            Removal of application-layer auto_now functionality
+            Set default to 0 or None to disable all TIMESTAMP behavior
+            auto_now_add + auto_now_update = auto_now
         Postgre timestamp without timezone (default Django behavior)
         sqlite3 datetime (default Django behavior)
         Oracle?
+
+FixedCharField
+    Ensure that null keyword argument in FixedCharField actually stoes NULL in database?
+
+TimestampField
+    Add auto_now_update keyword argument
 
 Before release:
     Run style checker and linter
