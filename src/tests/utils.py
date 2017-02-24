@@ -37,17 +37,3 @@ def get_db_aliases():
     return [member[1] for member
         in inspect.getmembers(sys.modules[__name__])
         if member[0].startswith('ALIAS_')]
-
-def get_test_table_name(model):
-    """
-    Return the name of the test DB table.
-
-    Args:
-        model (django.db.models): A model instance from which Django's TestCase
-            generates a test table.
-
-    Returns:
-        string: The name of the generated test table.
-
-    """
-    return '_'.join([__name__.split('.')[0], model.__name__.lower()])

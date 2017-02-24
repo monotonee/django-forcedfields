@@ -15,9 +15,3 @@ class FixedCharRecord(django.db.models.Model):
     """
 
     char_field_1 = django_forcedfields.FixedCharField(max_length=4)
-
-
-
-
-
-

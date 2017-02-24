@@ -43,13 +43,12 @@ class TestFixedCharField(django.test.TestCase):
         TODO: Get test DB entity names from Django's TestCase class directly?
 
         """
-        cls._test_table_name = test_utils.get_test_table_name(
-            test_models.FixedCharRecord)
+        cls._db_aliases = test_utils.get_db_aliases()
+        cls._test_table_name = test_models.FixedCharRecord._meta.db_table
         cls._test_field_name = test_models.FixedCharRecord._meta.fields[1]\
             .get_attname()
         cls._test_field_max_length = test_models.FixedCharRecord._meta\
             .fields[1].max_length
-        cls._db_aliases = test_utils.get_db_aliases()
 
     def test_db_type(self):
         """
@@ -101,6 +100,14 @@ class TestFixedCharField(django.test.TestCase):
             https://github.com/django/django/blob/master/django/db/backends/base/introspection.py
             https://github.com/django/django/blob/master/django/db/backends/mysql/introspection.py
 
+        In django.db.backends.base.creation.BaseDatabaseCreation.create_test_db,
+        the DATABASES alias NAME parameter is overwritten by the results of the
+        same object's _get_test_db_name() method. Therefore, we can get the
+        generated name of the test DB from the connection's settings_dict.
+
+        See:
+            https://github.com/django/django/blob/master/django/db/backends/base/creation.py
+
         """
         sql_string = """
             SELECT
@@ -114,7 +121,7 @@ class TestFixedCharField(django.test.TestCase):
                 AND `COLUMN_NAME` = %s
         """
         sql_params = [
-            test_utils.TEST_DB_NAME,
+            django.db.connections[test_utils.ALIAS_MYSQL].settings_dict['NAME'],
             self._test_table_name,
             self._test_field_name]
 
@@ -144,6 +151,14 @@ class TestFixedCharField(django.test.TestCase):
             https://github.com/django/django/blob/master/django/db/backends/base/introspection.py
             https://github.com/django/django/blob/master/django/db/backends/mysql/introspection.py
 
+        In django.db.backends.base.creation.BaseDatabaseCreation.create_test_db,
+        the DATABASES alias NAME parameter is overwritten by the results of the
+        same object's _get_test_db_name() method. Therefore, we can get the
+        generated name of the test DB from the connection's settings_dict.
+
+        See:
+            https://github.com/django/django/blob/master/django/db/backends/base/creation.py
+
         """
         sql_string = """
             SELECT
@@ -157,7 +172,8 @@ class TestFixedCharField(django.test.TestCase):
                 AND column_name = %s
         """
         sql_params = [
-            test_utils.TEST_DB_NAME,
+            django.db.connections[test_utils.ALIAS_POSTGRESQL]\
+                .settings_dict['NAME'],
             self._test_table_name,
             self._test_field_name]
 
