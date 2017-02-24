@@ -1,13 +1,8 @@
 """
-Tests of the fixed char field using a real DB backend.
-
-I'm not even going to attempt to mock and/or patch my way through Django's ORM.
-I have opted to use small database service containers against which to run the
-tests for a handful of database backends.
+Tests of the fixed char field.
 
 """
 
-import inspect
 import unittest.mock as mock
 
 import django.conf
@@ -16,17 +11,13 @@ import django.db
 import django.test
 
 from . import models as test_models
+from . import utils as test_utils
 import django_forcedfields
 
 
 class TestFixedCharField(django.test.TestCase):
     """
     Defines tests for the fixed char field class.
-
-    Since multiple database configs are defined in the settings.py and are being
-    simultaneously tested, a series of class constants are defined here, each
-    containing the value of its respective DATABASES alias. This makes it more
-    explicit and readable which test is using what database and when.
 
     Originally, I attempted to leave the "default" DATABASES alias empty and to
     define each database by a non-default, explicit alias. However, despite my
@@ -37,22 +28,13 @@ class TestFixedCharField(django.test.TestCase):
     with Django over anything remotely unusual in the way I want to structure
     my code.
 
-    If memory serves, the Django test classes attempt to use the DATABASES
-    alias' NAME parameter for the test database name suffix. Since there are no
-    NAME parameters in the tests.settings module, the suffix is empty, resulting
-    in "test_".
-
     See:
         https://code.djangoproject.com/ticket/25504
         https://docs.djangoproject.com/en/dev/topics/db/multi-db/
         https://github.com/django/django/blob/master/django/core/management/commands/inspectdb.py
 
     """
-    _ALIAS_MYSQL = 'default'
-    _ALIAS_POSTGRESQL = 'postgresql'
-    _ALIAS_SQLITE = 'sqlite3'
 
-    _test_database_name = 'test_'
     multi_db = True
 
     @classmethod
@@ -61,18 +43,13 @@ class TestFixedCharField(django.test.TestCase):
         TODO: Get test DB entity names from Django's TestCase class directly?
 
         """
-        cls._test_table_name = '_'.join([
-            __name__.split('.')[0],
-            test_models.FixedCharRecord.__name__.lower()])
+        cls._test_table_name = test_utils.get_test_table_name(
+            test_models.FixedCharRecord)
         cls._test_field_name = test_models.FixedCharRecord._meta.fields[1]\
             .get_attname()
         cls._test_field_max_length = test_models.FixedCharRecord._meta\
             .fields[1].max_length
-
-        # inspect.getmembers() returns a tuple of member (name, value)
-        cls._db_aliases = [member[1] for member
-            in inspect.getmembers(cls)
-            if member[0].startswith('_ALIAS')]
+        cls._db_aliases = test_utils.get_db_aliases()
 
     def test_db_type(self):
         """
@@ -137,11 +114,11 @@ class TestFixedCharField(django.test.TestCase):
                 AND `COLUMN_NAME` = %s
         """
         sql_params = [
-            self._test_database_name,
+            test_utils.TEST_DB_NAME,
             self._test_table_name,
             self._test_field_name]
 
-        cursor = django.db.connections[self._ALIAS_MYSQL].cursor()
+        cursor = django.db.connections[test_utils.ALIAS_MYSQL].cursor()
         cursor.execute(sql_string, sql_params)
         record = cursor.fetchone()
 
@@ -180,11 +157,11 @@ class TestFixedCharField(django.test.TestCase):
                 AND column_name = %s
         """
         sql_params = [
-            self._test_database_name,
+            test_utils.TEST_DB_NAME,
             self._test_table_name,
             self._test_field_name]
 
-        cursor = django.db.connections[self._ALIAS_POSTGRESQL].cursor()
+        cursor = django.db.connections[test_utils.ALIAS_POSTGRESQL].cursor()
         cursor.execute(sql_string, sql_params)
         record = cursor.fetchone()
 
