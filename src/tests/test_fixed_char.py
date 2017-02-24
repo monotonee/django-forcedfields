@@ -58,7 +58,7 @@ class TestFixedCharField(django.test.TestCase):
     @classmethod
     def setUpTestData(cls):
         """
-        TODO: Get test DB values from Django's TestCase class directly?
+        TODO: Get test DB entity names from Django's TestCase class directly?
 
         """
         cls._test_table_name = '_'.join([
