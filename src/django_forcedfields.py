@@ -174,7 +174,7 @@ class TimestampField(models.DateTimeField):
         mutually exclusive on a TIMESTAMP field.
 
         See:
-            https://dev.mysql.com/doc/refman/5.7/en/timestamp-initialization.html
+            https://dev.mysql.com/doc/refman/en/timestamp-initialization.html
             https://mariadb.com/kb/en/mariadb/timestamp/
 
         In field deconstruction, Django's Field class uses the values from an
@@ -188,8 +188,12 @@ class TimestampField(models.DateTimeField):
             type_spec = ['TIMESTAMP']
             ts_default_default = 'DEFAULT CURRENT_TIMESTAMP'
             ts_default_on_update = 'ON UPDATE CURRENT_TIMESTAMP'
+
             if self.null:
                 type_spec.append('NULL')
+            else:
+                type_spec.append('NOT NULL')
+
             if self.auto_now:
                 # CURRENT_TIMESTAMP on create and on update.
                 type_spec.extend([ts_default_default, ts_default_on_update])
@@ -199,10 +203,12 @@ class TimestampField(models.DateTimeField):
             elif self.has_default():
                 # Set specified default on creation, no ON UPDATE action.
                 type_spec.append('DEFAULT ' + str(self.default))
+
             if self.auto_now_update:
                 # Mutual exclusivity between auto_now and auto_now_update has
                 # already been ensured by this point.
                 type_spec.append(ts_default_on_update)
+
             db_type = ' '.join(type_spec)
         else:
             db_type = super().db_type(connection)
