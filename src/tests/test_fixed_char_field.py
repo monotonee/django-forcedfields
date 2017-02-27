@@ -46,7 +46,7 @@ class TestFixedCharField(django.test.TestCase):
         cls._db_aliases = test_utils.get_db_aliases()
         cls._test_table_name = test_models.FixedCharRecord._meta.db_table
         cls._test_field_name = test_models.FixedCharRecord._meta.fields[1]\
-            .get_attname()
+            .get_attname_column()[1]
         cls._test_field_max_length = test_models.FixedCharRecord._meta\
             .fields[1].max_length
 
@@ -70,10 +70,15 @@ class TestFixedCharField(django.test.TestCase):
 
     def test_max_length_validation(self):
         """
-        Test that max_length is enforced.
+        Test that max_length validation functions correctly.
 
         Probably not strictly necessary but I want to ensure that the custom
         field class method overrides don't affect standard operations.
+
+        Note:
+            Validation covers actual model attribute values, not the field class
+            instance arguments. Checks cover the field class arguments and
+            configuration.
 
         """
         test_model = test_models.FixedCharRecord(char_field_1='too many chars')
