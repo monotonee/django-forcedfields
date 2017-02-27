@@ -118,6 +118,20 @@ class TimestampField(models.DateTimeField):
         The null option is independent except when False, in which case the
         default option may not be None.
 
+        Valid permutations:
+            auto_now
+            auto_now + null
+            auto_now_add
+            auto_now_add + auto_now_update
+            auto_now_add + auto_now_update + null
+            auto_now_add + null
+            auto_now_update
+            auto_now_update + null
+            default
+            default + auto_now_update
+            default + auto_now_update + null
+            default + null
+
         Returns:
             list: A list of additional Django check messages.
 
@@ -126,28 +140,16 @@ class TimestampField(models.DateTimeField):
             https://docs.djangoproject.com/en/dev/topics/checks/
 
         """
-        # Valid permutations:
-        # auto_now
-        # auto_now + null
-        # auto_now_add
-        # auto_now_add + auto_now_update
-        # auto_now_add + auto_now_update + null
-        # auto_now_add + null
-        # auto_now_update
-        # auto_now_update + null
-        # default
-        # default + auto_now_update
-        # default + auto_now_update + null
-        # default + null
-
         # Checks auto_now, auto_now_add, and default mutual exclusivity.
         failed_checks = super()._check_mutually_exclusive_options()
+
         if self.auto_now and self.auto_now_update:
             failed_checks.append(
                 django.core.checks.Error(
                     'The option auto_now is mutually exclusive with the option '
                     'auto_now_update.',
-                    obj=self))
+                    obj=self,
+                    id=__name__ + '.E160'))
 
         # If null is False, I believe Django will simply attempt to store the
         # None default as an empty string.

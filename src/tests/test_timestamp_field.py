@@ -5,7 +5,7 @@ Tests of the timestamp field.
 
 import unittest.mock as mock
 
-#import django.core.exceptions
+import django.core.exceptions
 import django.db
 import django.test
 
@@ -123,36 +123,99 @@ class TestTimestampField(django.test.TestCase):
         """
         backend_subtests = {
             test_utils.ALIAS_MYSQL: self._test_db_type_mysql,
-            test_utils.ALIAS_POSTGRESQL: self._test_db_type_postgresql
-        }
+            test_utils.ALIAS_POSTGRESQL: self._test_db_type_postgresql}
 
         for alias, subtest_callable in backend_subtests.items():
             db_backend = django.db.connections[alias].settings_dict['ENGINE']
             with self.subTest(backend=db_backend):
                 subtest_callable()
 
-    def test_field_option_validation(self):
+    def test_field_argument_check(self):
         """
-        Ensure keyword option mutual exclusivity rules are enforced.
+        Ensure keyword argument rules are enforced.
 
-        'django.test.runner.DiscoverRunner'
+        For some reason, model and field check() methods are not called during
+        test database setup or when dynamically creating and migrating model
+        classes. I don't know where and when the checks are run or when the
+        checks framework raises the returned errors.
+
+        I'm just going to test the check() method output here.
+
+        Note:
+            Validation covers actual model attribute values, not the field class
+            instance arguments. Checks cover the field class arguments and
+            configuration.
+
+        See:
+            https://docs.djangoproject.com/en/dev/topics/checks/
 
         """
+        check_tests = {
+            'fields.E160' : {
+                'auto_now': True,
+                'auto_now_add': True},
+            'django_forcedfields.E160' : {
+                'auto_now': True,
+                'auto_now_update': True}}
+
+        for check_error_id, kwargs in check_tests.items():
+            test_model_members = {
+                'ts_field_1': django_forcedfields.TimestampField(**kwargs),
+                '__module__':  __name__}
+            TestModel = type(
+                'TestModel',
+                (django.db.models.Model,),
+                test_model_members)
+            model_instance = TestModel(ts_field_1='1991-01-01 00:00:01')
+            check_results = model_instance.check()
+
+            with self.subTest(field_args=', '.join(kwargs.keys())):
+                self.assertEqual(len(check_results), 1)
+                self.assertEqual(check_results[0].id, check_error_id)
+
+    def test_mysql_table_structure(self):
+        """
+        Test correct DB table structures with MySQL backend.
+
+        Because all tb_type method return values were tested in another test
+        case, this method will only run a cursory set of checks on the actual
+        database table structure. This module is supposed to test the custom
+        field, not the underlying database.
+
+        """
+        sql_string = """
+            SELECT
+                `DATA_TYPE`,
+                `IS_NULLABLE`,
+                `COLUMN_DEFAULT`,
+                `EXTRA`
+            FROM
+                `information_schema`.`COLUMNS`
+            WHERE
+                `TABLE_SCHEMA` = %s
+                AND `TABLE_NAME` = %s
+                AND `COLUMN_NAME` = %s
+        """
+        #sql_params = [
+            #django.db.connections[test_utils.ALIAS_MYSQL].settings_dict['NAME'],
+            #self._test_table_name,
+            #self._test_field_name]
+
+        #cursor = django.db.connections[test_utils.ALIAS_MYSQL].cursor()
+        #cursor.execute(sql_string, sql_params)
+        #record = cursor.fetchone()
+
+        #self.assertEqual(record[0], 'char')
+        #self.assertEqual(record[1], self._test_field_max_length)
+
         raise NotImplementedError('Complete this test you lazy bastard.')
 
-    def test_db_structure(self):
+    def test_field_values(self):
         """
-        Test that the auto_now option creates correct DB data types.
+        Test that the values are saved correctly.
+
+        For MySQL, this should bypass most of the django.db.DateTimeField value
+        overrides.
 
         """
-        #current_options_string = ', '.join(kwargs_dict.keys())
-        #with self.subTest(options=current_options_string):
-            #type_definition_dict = {
-                #'ts_field_1': django_forcedfields.TimestampField(
-                    #**kwargs_dict),
-                #'__module__': __name__.split('.')[0] + '.models'}
-            #TestModel = type(
-                #'TestModel',
-                #(django.db.models.Model,),
-                #type_definition_dict)
         raise NotImplementedError('Complete this test you lazy bastard.')
