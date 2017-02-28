@@ -130,9 +130,9 @@ class TestFixedCharField(django.test.TestCase):
             self._test_table_name,
             self._test_field_name]
 
-        cursor = django.db.connections[test_utils.ALIAS_MYSQL].cursor()
-        cursor.execute(sql_string, sql_params)
-        record = cursor.fetchone()
+        with django.db.connections[test_utils.ALIAS_MYSQL].cursor() as cursor:
+            cursor.execute(sql_string, sql_params)
+            record = cursor.fetchone()
 
         self.assertEqual(record[0], 'char')
         self.assertEqual(record[1], self._test_field_max_length)
@@ -182,9 +182,10 @@ class TestFixedCharField(django.test.TestCase):
             self._test_table_name,
             self._test_field_name]
 
-        cursor = django.db.connections[test_utils.ALIAS_POSTGRESQL].cursor()
-        cursor.execute(sql_string, sql_params)
-        record = cursor.fetchone()
+        with django.db.connections[test_utils.ALIAS_POSTGRESQL].cursor() \
+            as cursor:
+            cursor.execute(sql_string, sql_params)
+            record = cursor.fetchone()
 
         self.assertEqual(record[0], 'character')
         self.assertEqual(record[1], self._test_field_max_length)
