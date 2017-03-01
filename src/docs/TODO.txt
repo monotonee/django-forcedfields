@@ -22,6 +22,8 @@ In readme:
             Removal of application-layer auto_now functionality
             Set default to 0 or None to disable all TIMESTAMP behavior
             auto_now_add + auto_now_update = auto_now
+            Setting null = True will cause default to be NULL due to Django's ORM
+            Due to database-level handling of ON UPDATE, Manager.update() now works.
         Postgre timestamp without timezone (default Django behavior)
         sqlite3 datetime (default Django behavior)
         Oracle?
@@ -31,6 +33,7 @@ FixedCharField
 
 TimestampField
     Add auto_now_update keyword argument
+    Add validation for TIMESTAMP MySQL date limit? Unix epoch
 
 Before release:
     Run style checker and linter
