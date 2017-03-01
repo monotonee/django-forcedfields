@@ -13,30 +13,17 @@ in "test_".
 
 """
 
+import datetime
 import inspect
 import sys
 
-# DATABASES settings keys (aliases).
+"""
+Utilities to assist with referencing DATABASES settings dictionary.
+
+"""
 ALIAS_MYSQL = 'default'
 ALIAS_POSTGRESQL = 'postgresql'
 ALIAS_SQLITE = 'sqlite3'
-
-# Constants to assist with timestamp field testing.
-TS_FIELD_TEST_ATTRNAME = 'ts_field_1'
-TS_FIELD_TEST_KWARG_PERMUTATIONS = [
-    {'auto_now': True},
-    {'auto_now': True, 'null': True},
-    {'auto_now_add': True},
-    {'auto_now_add': True, 'auto_now_update': True},
-    {'auto_now_add': True, 'auto_now_update': True, 'null': True},
-    {'auto_now_add': True, 'null': True},
-    {'auto_now_update': True},
-    {'auto_now_update': True, 'null': True},
-    {'auto_now_update': True, 'default': 0},
-    {'auto_now_update': True, 'default': 0, 'null': True},
-    {'default': 0},
-    {'default': 0, 'null': True}]
-TS_FIELD_TEST_PREFIX = 'TsRecord'
 
 
 def get_db_aliases():
@@ -52,6 +39,103 @@ def get_db_aliases():
     return [member[1] for member
         in inspect.getmembers(sys.modules[__name__])
         if member[0].startswith('ALIAS_')]
+
+
+"""
+Utilities to assist with timestamp field testing.
+
+"""
+class TimestampFieldTestConfig:
+    """
+    A simple class to help centralize and organize test configs.
+
+    A named tuple might also serve this purpose but i'm currently of the
+    opinion that a small class is more explicit, cleaner, and more easily
+    documented.
+
+    For each valid combination of keyword arguments passed to the timestamp
+    field, there is a corresponding set of expected outputs including the output
+    of the customer field's db_type() method, the values it ultimately saves
+    in the database, and other internal field class states. This class collects
+    each associated set of inputs and outputs for easier testing.
+
+    See:
+        https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.db_type
+
+    """
+
+    def __init__(
+        self, kwargs_dict, db_type_mysql, db_type_postgresql):
+        """
+        Args:
+            kwargs_dict (dict): A dictionary of the k/v pairs to be passed as
+                keyword arguments to the custom field constructor.
+            db_type_mysql (string): The expected output of db_type() for the
+                MySQL backend.
+            db_type_postgresql (string): The expected output of db_type() for
+                the PostgreSQL backend.
+
+        """
+        self.kwargs_dict = kwargs_dict
+        self.db_type_mysql = db_type_mysql
+        self.db_type_postgresql = db_type_postgresql
+
+
+_default_datetime = datetime.datetime.today()
+_default_datetime_str = str(_default_datetime)
+TS_FIELD_TEST_ATTRNAME = 'ts_field_1'
+TS_FIELD_TEST_CONFIGS = [
+    TimestampFieldTestConfig(
+        {'auto_now': True},
+        'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP'),
+    TimestampFieldTestConfig(
+        {'auto_now': True, 'null': True},
+        'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP'),
+    TimestampFieldTestConfig(
+        {'auto_now_add': True},
+        'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP'),
+    TimestampFieldTestConfig(
+        {'auto_now_add': True, 'auto_now_update': True},
+        'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP'),
+    TimestampFieldTestConfig(
+        {'auto_now_add': True, 'auto_now_update': True, 'null': True},
+        'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP'),
+    TimestampFieldTestConfig(
+        {'auto_now_add': True, 'null': True},
+        'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP'),
+    TimestampFieldTestConfig(
+        {'auto_now_update': True},
+        'TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        'TIMESTAMP WITHOUT TIME ZONE'),
+    TimestampFieldTestConfig(
+        {'auto_now_update': True, 'null': True},
+        'TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        'TIMESTAMP WITHOUT TIME ZONE'),
+    TimestampFieldTestConfig(
+        {'auto_now_update': True, 'default': _default_datetime},
+        'TIMESTAMP DEFAULT \'' + _default_datetime_str \
+            + '\' ON UPDATE CURRENT_TIMESTAMP',
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _default_datetime_str + "'"),
+    TimestampFieldTestConfig(
+        {'auto_now_update': True, 'default': _default_datetime, 'null': True},
+        'TIMESTAMP DEFAULT \'' + _default_datetime_str \
+            + '\' ON UPDATE CURRENT_TIMESTAMP',
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _default_datetime_str + "'"),
+    TimestampFieldTestConfig(
+        {'default': _default_datetime},
+        'TIMESTAMP DEFAULT \'' + _default_datetime_str + '\'',
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _default_datetime_str + "'"),
+    TimestampFieldTestConfig(
+        {'default': _default_datetime, 'null': True},
+        'TIMESTAMP DEFAULT \'' + _default_datetime_str + '\'',
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _default_datetime_str + "'")]
+
 
 def get_ts_field_test_model_class_name(**kwargs):
     """
@@ -72,7 +156,7 @@ def get_ts_field_test_model_class_name(**kwargs):
 
     """
     suffix = ''.join([key.replace('_', '').title() for key in kwargs.keys()])
-    return TS_FIELD_TEST_PREFIX + suffix
+    return 'TsRecord' + suffix
 
 
 class TemporaryMigration:

@@ -65,12 +65,12 @@ See:
 
 """
 this_module = sys.modules[__name__]
-for kwargs in test_utils.TS_FIELD_TEST_KWARG_PERMUTATIONS:
+for config in test_utils.TS_FIELD_TEST_CONFIGS:
     test_model_class_name = test_utils.get_ts_field_test_model_class_name(
-        **kwargs)
+        **config.kwargs_dict)
     test_model_class_members = {
         test_utils.TS_FIELD_TEST_ATTRNAME: django_forcedfields.TimestampField(
-            **kwargs),
+            **config.kwargs_dict),
         '__module__': __name__}
     test_model_class = type(
         test_model_class_name,

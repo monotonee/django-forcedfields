@@ -36,6 +36,38 @@ class TestTimestampField(django.test.TestCase):
         """
         cls._db_aliases = test_utils.get_db_aliases()
 
+    def _test_db_type_mysql(self):
+        """
+        Test output of the custom field db_type method with the MySQL backend.
+
+        """
+        connection = django.db.connections[test_utils.ALIAS_MYSQL]
+        for config in test_utils.TS_FIELD_TEST_CONFIGS:
+            current_kwargs_string = ', '.join(config.kwargs_dict.keys())
+
+            with self.subTest(arguments=current_kwargs_string):
+                test_field = django_forcedfields.TimestampField(
+                    **config.kwargs_dict)
+                self.assertEqual(
+                    test_field.db_type(connection),
+                    config.db_type_mysql)
+
+    def _test_db_type_postgresql(self):
+        """
+        Test output of custom field db_type method with the PostgreSQL backend.
+
+        """
+        connection = django.db.connections[test_utils.ALIAS_POSTGRESQL]
+        for config in test_utils.TS_FIELD_TEST_CONFIGS:
+            current_kwargs_string = ', '.join(config.kwargs_dict.keys())
+
+            with self.subTest(arguments=current_kwargs_string):
+                test_field = django_forcedfields.TimestampField(
+                    **config.kwargs_dict)
+                self.assertEqual(
+                    test_field.db_type(connection),
+                    config.db_type_postgresql)
+
     def test_db_type(self):
         """
         Test simple output of the field's overridden "db_type" method.
@@ -54,69 +86,6 @@ class TestTimestampField(django.test.TestCase):
             with self.subTest(backend=db_backend):
                 subtest_callable()
 
-    def _test_db_type_mysql(self):
-        """
-        Test output of the custom field db_type method with the MySQL backend.
-
-        I don't like having "all permutations" defined in more than one place.
-        Valid kwargs are also defined in tests.utils.
-
-        TODO:
-            Devise way to centralize a valid kwarg permutation definition.
-
-        """
-        kwarg_permutations = {
-            'NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP': {
-                'auto_now': True},
-            'NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP': {
-                'auto_now': True,
-                'null': True},
-            'NOT NULL DEFAULT CURRENT_TIMESTAMP': {
-                'auto_now_add': True},
-            'NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP': {
-                'auto_now_add': True,
-                'auto_now_update': True},
-            'NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP': {
-                'auto_now_add': True,
-                'auto_now_update': True,
-                'null': True},
-            'NULL DEFAULT CURRENT_TIMESTAMP': {
-                'auto_now_add': True,
-                'null': True},
-            'NOT NULL ON UPDATE CURRENT_TIMESTAMP': {
-                'auto_now_update': True},
-            'NULL ON UPDATE CURRENT_TIMESTAMP': {
-                'auto_now_update': True,
-                'null': True},
-            'NOT NULL DEFAULT 0': {
-                'default': 0},
-            'NOT NULL DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP': {
-                'auto_now_update': True,
-                'default': 0},
-            'NULL DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP': {
-                'auto_now_update': True,
-                'default': 0,
-                'null': True},
-            'NULL DEFAULT 0': {
-                'default': 0,
-                'null': True}}
-
-        for expected_value, kwargs_dict in kwarg_permutations.items():
-            expected_value = 'TIMESTAMP ' + expected_value
-            current_options_string = ', '.join(kwargs_dict.keys())
-            connection = django.db.connections[test_utils.ALIAS_MYSQL]
-
-            with self.subTest(options=current_options_string):
-                test_field = django_forcedfields.TimestampField(**kwargs_dict)
-                self.assertEqual(test_field.db_type(connection), expected_value)
-
-    def _test_db_type_postgresql(self):
-        """
-        Test output of custom field db_type method with the PostgreSQL backend.
-
-        """
-        raise NotImplementedError('Complete this test you lazy bastard.')
-
     def test_field_argument_check(self):
         """
         Ensure keyword argument rules are enforced.
@@ -126,12 +95,12 @@ class TestTimestampField(django.test.TestCase):
         classes. I don't know where and when the checks are run or when the
         checks framework raises the returned errors.
 
-        I'm just going to test the check() method output here.
+        I'm just going to manually call the check() method here.
 
         Note:
             Validation covers actual model attribute values, not the field class
             instance arguments. Checks cover the field class arguments and
-            configuration.
+            field class state.
 
         See:
             https://docs.djangoproject.com/en/dev/topics/checks/
@@ -153,12 +122,35 @@ class TestTimestampField(django.test.TestCase):
                 'TestModel',
                 (django.db.models.Model,),
                 test_model_members)
-            model_instance = TestModel(ts_field_1='1991-01-01 00:00:01')
+            model_instance = TestModel(ts_field_1='2000-01-01 00:00:01')
             check_results = model_instance.check()
 
             with self.subTest(field_args=', '.join(kwargs.keys())):
                 self.assertEqual(len(check_results), 1)
                 self.assertEqual(check_results[0].id, check_error_id)
+
+    def test_field_deconstruction(self):
+        """
+        Test the custom field's deconstruct() method.
+
+        See:
+            https://docs.djangoproject.com/en/dev/howto/custom-model-fields/#field-deconstruction
+
+        """
+        test_field = django_forcedfields.TimestampField(
+            auto_now_add=True,
+            auto_now_update=True,
+            null=True)
+        name, path, args, kwargs = test_field.deconstruct()
+        reconstructed_test_field = django_forcedfields.TimestampField(
+            *args,
+            **kwargs)
+
+        self.assertEqual(test_field.auto_now, reconstructed_test_field.auto_now)
+        self.assertEqual(
+            test_field.auto_now_update,
+            reconstructed_test_field.auto_now_update)
+        self.assertEqual(test_field.null, reconstructed_test_field.null)
 
     def test_mysql_table_structure(self):
         """
@@ -177,7 +169,7 @@ class TestTimestampField(django.test.TestCase):
 
         """
         test_model_class_name = test_utils.get_ts_field_test_model_class_name(
-            **test_utils.TS_FIELD_TEST_KWARG_PERMUTATIONS[0])
+            **test_utils.TS_FIELD_TEST_CONFIGS[0].kwargs_dict)
         test_model = getattr(test_models, test_model_class_name)
         connection = django.db.connections[test_utils.ALIAS_MYSQL]
 
@@ -209,15 +201,57 @@ class TestTimestampField(django.test.TestCase):
         self.assertEqual(record[3], 'on update current_timestamp')
 
     def test_postgresql_table_structure(self):
-        raise NotImplementedError('Complete this test you lazy bastard.')
+        """
+        Test correct DB table structures with PostgreSQL backend.
+
+        Because all db_type method return values were tested in another test
+        case, this method will only run a cursory set of checks on the actual
+        database table structure. This module is supposed to test the custom
+        field, not the underlying database.
+
+        information_schema.COLUMNS.COLUMN_DEFAULT is a longtext field.
+
+        See:
+            https://mariadb.com/kb/en/mariadb/create-table/
+            https://mariadb.com/kb/en/mariadb/sql-statements-that-cause-an-implicit-commit/
+
+        """
+        test_model_class_name = test_utils.get_ts_field_test_model_class_name(
+            **test_utils.TS_FIELD_TEST_CONFIGS[0].kwargs_dict)
+        test_model = getattr(test_models, test_model_class_name)
+        connection = django.db.connections[test_utils.ALIAS_POSTGRESQL]
+
+        sql_string = """
+            SELECT
+                LOWER(data_type) AS data_type,
+                LOWER(is_nullable) AS is_nullable,
+                LOWER(column_default) AS column_default
+            FROM
+                information_schema.columns
+            WHERE
+                table_catalog = %s
+                AND table_name = %s
+                AND column_name = %s
+        """
+        sql_params = [
+            connection.settings_dict['NAME'],
+            test_model._meta.db_table,
+            test_model._meta.fields[1].get_attname_column()[1]]
+
+        with connection.cursor() as cursor:
+            cursor.execute(sql_string, sql_params)
+            record = cursor.fetchone()
+
+        self.assertEqual(record[0], 'timestamp without time zone')
+        self.assertEqual(record[1], 'no')
+        self.assertEqual(record[2], 'now()')
 
     def test_field_values(self):
         """
-        Test that the values are saved correctly.
+        Test that the output values are correct in final SQL statements.
 
         For MySQL, this should bypass most of the django.db.DateTimeField value
         overrides.
 
         """
         raise NotImplementedError('Complete this test you lazy bastard.')
-

@@ -11,10 +11,10 @@ See:
 """
 
 import django.core.checks
-from django.db import models
+import django.db
 
 
-class FixedCharField(models.CharField):
+class FixedCharField(django.db.models.CharField):
     """
     Stores Python strings in fixed-length "char" database fields.
 
@@ -37,7 +37,7 @@ class FixedCharField(models.CharField):
         return 'char({!s})'.format(self.max_length)
 
 
-class TimestampField(models.DateTimeField):
+class TimestampField(django.db.models.DateTimeField):
     """
     Designed for use as a timezone-free system timestamp field.
 
@@ -153,7 +153,7 @@ class TimestampField(models.DateTimeField):
 
         # If null is False, I believe Django will simply attempt to store the
         # None default as an empty string.
-        #if self.null and self.default == None:
+        #if not self.null and self.default == None:
             #failed_checks.append(
                 #django.core.checks.Error(
                     #'If the option "default" is None, then the "null" option '
@@ -179,6 +179,10 @@ class TimestampField(models.DateTimeField):
         appends NULL or NOT NULL to the end of the generated SQL. I'd look in
         the base Field class for that.
 
+        Note that returning None from this method will cause Django to simply
+        skip this field in its generated CREATE TABLE statements. This allows
+        one to define the field manually and for Django to "get out of the way."
+
         See:
             https://dev.mysql.com/doc/refman/en/timestamp-initialization.html
             https://mariadb.com/kb/en/mariadb/timestamp/
@@ -188,9 +192,11 @@ class TimestampField(models.DateTimeField):
 
         See:
             https://github.com/django/django/blob/master/django/db/models/fields/__init__.py#L365
+            https://docs.djangoproject.com/en/dev/howto/custom-model-fields/#useful-methods
 
         """
-        if connection.settings_dict['ENGINE'] == 'django.db.backends.mysql':
+        engine = connection.settings_dict['ENGINE']
+        if engine == 'django.db.backends.mysql':
             type_spec = ['TIMESTAMP']
             ts_default_default = 'DEFAULT CURRENT_TIMESTAMP'
             ts_default_on_update = 'ON UPDATE CURRENT_TIMESTAMP'
@@ -203,7 +209,7 @@ class TimestampField(models.DateTimeField):
                 type_spec.append(ts_default_default)
             elif self.has_default():
                 # Set specified default on creation, no ON UPDATE action.
-                type_spec.append('DEFAULT ' + str(self.default))
+                type_spec.append("DEFAULT '" + str(self.default) + "'")
 
             if self.auto_now_update:
                 # Mutual exclusivity between auto_now and auto_now_update has
@@ -211,7 +217,53 @@ class TimestampField(models.DateTimeField):
                 type_spec.append(ts_default_on_update)
 
             db_type = ' '.join(type_spec)
+        elif engine == 'django.db.backends.postgresql':
+            type_spec = ['TIMESTAMP WITHOUT TIME ZONE']
+
+            if self.auto_now or self.auto_now_add:
+                # CURRENT_TIMESTAMP on create
+                type_spec.append('DEFAULT CURRENT_TIMESTAMP')
+            elif self.has_default():
+                # Set specified default on creation, no ON UPDATE action.
+                # Note PostgreSQL uses double quotes for system identifiers.
+                type_spec.append("DEFAULT '" + str(self.default) + "'")
+
+            db_type = ' '.join(type_spec)
         else:
             db_type = super().db_type(connection)
 
         return db_type
+
+    def pre_save(self, model_instance, add):
+        """
+        Prevent ORM-layer assignment of current timestamp.
+
+        The django.db.models.DateField and DateTimeField explicitly set the
+        current timestamp when auto_now or auto_now_add is True.
+
+        """
+        # Need to determine backend engine. If not here, then we can override
+        # value in get_db_prep_value().
+        # Set value to today() for anything but MySQL and PostgreSQL's auto_now_add
+        import pdb; pdb.set_trace()
+        return super(django.db.models.Field, self).pre_save(model_instance, add)
+
+    def get_db_prep_value(self, value, connection, prepared=False):
+        """
+        self.default must be handled by the SQL compiler or somewhere else in
+        Django's ORM. I don't see the django.db.models.DateTimeField class
+        concerning itself with self.default at all.
+
+        See:
+            https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.get_db_prep_value
+
+        """
+        #engine = connection.settings_dict['ENGINE']
+
+        #if engine == 'django.db.backends.mysql':
+
+
+
+
+        super().get_db_prep_value(value, connection, prepared)
+
