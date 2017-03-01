@@ -175,6 +175,10 @@ class TimestampField(models.DateTimeField):
         creation. In MySQL/MariaDB, NULL, DEFAULT, and ON UPDATE are not
         mutually exclusive on a TIMESTAMP field.
 
+        Type spec additions for self.null are not needed. Django magically
+        appends NULL or NOT NULL to the end of the generated SQL. I'd look in
+        the base Field class for that.
+
         See:
             https://dev.mysql.com/doc/refman/en/timestamp-initialization.html
             https://mariadb.com/kb/en/mariadb/timestamp/
@@ -190,11 +194,6 @@ class TimestampField(models.DateTimeField):
             type_spec = ['TIMESTAMP']
             ts_default_default = 'DEFAULT CURRENT_TIMESTAMP'
             ts_default_on_update = 'ON UPDATE CURRENT_TIMESTAMP'
-
-            if self.null:
-                type_spec.append('NULL')
-            else:
-                type_spec.append('NOT NULL')
 
             if self.auto_now:
                 # CURRENT_TIMESTAMP on create and on update.

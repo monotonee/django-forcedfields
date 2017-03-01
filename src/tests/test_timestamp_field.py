@@ -6,6 +6,7 @@ Tests of the timestamp field.
 import unittest.mock as mock
 
 import django.core.exceptions
+import django.core.management
 import django.db
 import django.test
 
@@ -34,16 +35,34 @@ class TestTimestampField(django.test.TestCase):
 
         """
         cls._db_aliases = test_utils.get_db_aliases()
-        #cls._test_table_name = test_models.FixedCharRecord._meta.db_table
-        #cls._test_field_name = test_models.FixedCharRecord._meta.fields[1]\
-            #.get_attname()
-        #cls._test_field_max_length = test_models.FixedCharRecord._meta\
-            #.fields[1].max_length
-        # import pdb; pdb.set_trace()
+
+    def test_db_type(self):
+        """
+        Test simple output of the field's overridden "db_type" method.
+
+        Only test thoroughly the overridden field behavior. Cursory checks will
+        be performed to ensure fallback to Django default if necessary but
+        those values will not be extensively checked.
+
+        """
+        backend_subtests = {
+            test_utils.ALIAS_MYSQL: self._test_db_type_mysql,
+            test_utils.ALIAS_POSTGRESQL: self._test_db_type_postgresql}
+
+        for alias, subtest_callable in backend_subtests.items():
+            db_backend = django.db.connections[alias].settings_dict['ENGINE']
+            with self.subTest(backend=db_backend):
+                subtest_callable()
 
     def _test_db_type_mysql(self):
         """
         Test output of the custom field db_type method with the MySQL backend.
+
+        I don't like having "all permutations" defined in more than one place.
+        Valid kwargs are also defined in tests.utils.
+
+        TODO:
+            Devise way to centralize a valid kwarg permutation definition.
 
         """
         kwarg_permutations = {
@@ -98,38 +117,6 @@ class TestTimestampField(django.test.TestCase):
         """
         raise NotImplementedError('Complete this test you lazy bastard.')
 
-    def test_db_type(self):
-        """
-        Test simple output of the field's overridden "db_type" method.
-
-        Only test thoroughly the overridden field behavior. Cursory checks will
-        be performed to ensure fallback to Django default if necessary but
-        those values will not be extensively checked.
-
-        Valid permutations:
-            auto_now
-            auto_now + null
-            auto_now_add
-            auto_now_add + auto_now_update
-            auto_now_add + auto_now_update + null
-            auto_now_add + null
-            auto_now_update
-            auto_now_update + null
-            default
-            default + auto_now_update
-            default + auto_now_update + null
-            default + null
-
-        """
-        backend_subtests = {
-            test_utils.ALIAS_MYSQL: self._test_db_type_mysql,
-            test_utils.ALIAS_POSTGRESQL: self._test_db_type_postgresql}
-
-        for alias, subtest_callable in backend_subtests.items():
-            db_backend = django.db.connections[alias].settings_dict['ENGINE']
-            with self.subTest(backend=db_backend):
-                subtest_callable()
-
     def test_field_argument_check(self):
         """
         Ensure keyword argument rules are enforced.
@@ -177,18 +164,29 @@ class TestTimestampField(django.test.TestCase):
         """
         Test correct DB table structures with MySQL backend.
 
-        Because all tb_type method return values were tested in another test
+        Because all db_type method return values were tested in another test
         case, this method will only run a cursory set of checks on the actual
         database table structure. This module is supposed to test the custom
         field, not the underlying database.
 
+        information_schema.COLUMNS.COLUMN_DEFAULT is a longtext field.
+
+        See:
+            https://mariadb.com/kb/en/mariadb/create-table/
+            https://mariadb.com/kb/en/mariadb/sql-statements-that-cause-an-implicit-commit/
+
         """
+        test_model_class_name = test_utils.get_ts_field_test_model_class_name(
+            **test_utils.TS_FIELD_TEST_KWARG_PERMUTATIONS[0])
+        test_model = getattr(test_models, test_model_class_name)
+        connection = django.db.connections[test_utils.ALIAS_MYSQL]
+
         sql_string = """
             SELECT
-                `DATA_TYPE`,
-                `IS_NULLABLE`,
-                `COLUMN_DEFAULT`,
-                `EXTRA`
+                LOWER(`DATA_TYPE`) AS `DATA_TYPE`,
+                LOWER(`IS_NULLABLE`) AS `IS_NULLABLE`,
+                LOWER(CAST(`COLUMN_DEFAULT` AS CHAR(32))) AS `COLUMN_DEFAULT`,
+                LOWER(`EXTRA`) AS `EXTRA`
             FROM
                 `information_schema`.`COLUMNS`
             WHERE
@@ -196,18 +194,21 @@ class TestTimestampField(django.test.TestCase):
                 AND `TABLE_NAME` = %s
                 AND `COLUMN_NAME` = %s
         """
-        #sql_params = [
-            #django.db.connections[test_utils.ALIAS_MYSQL].settings_dict['NAME'],
-            #self._test_table_name,
-            #self._test_field_name]
+        sql_params = [
+            connection.settings_dict['NAME'],
+            test_model._meta.db_table,
+            test_model._meta.fields[1].get_attname_column()[1]]
 
-        #cursor = django.db.connections[test_utils.ALIAS_MYSQL].cursor()
-        #cursor.execute(sql_string, sql_params)
-        #record = cursor.fetchone()
+        with connection.cursor() as cursor:
+            cursor.execute(sql_string, sql_params)
+            record = cursor.fetchone()
 
-        #self.assertEqual(record[0], 'char')
-        #self.assertEqual(record[1], self._test_field_max_length)
+        self.assertEqual(record[0], 'timestamp')
+        self.assertEqual(record[1], 'no')
+        self.assertEqual(record[2], 'current_timestamp')
+        self.assertEqual(record[3], 'on update current_timestamp')
 
+    def test_postgresql_table_structure(self):
         raise NotImplementedError('Complete this test you lazy bastard.')
 
     def test_field_values(self):
@@ -219,3 +220,4 @@ class TestTimestampField(django.test.TestCase):
 
         """
         raise NotImplementedError('Complete this test you lazy bastard.')
+
