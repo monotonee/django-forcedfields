@@ -94,6 +94,7 @@ class TimestampField(django.db.models.DateTimeField):
         Override the init method to add the auto_now_update keyword argument.
 
         """
+        self._get_prep_value_add = None
         self.auto_now_update = auto_now_update
         super().__init__(*args, **kwargs)
 
@@ -241,12 +242,20 @@ class TimestampField(django.db.models.DateTimeField):
         The django.db.models.DateField and DateTimeField explicitly set the
         current timestamp when auto_now or auto_now_add is True.
 
+        According to my current knowledge, it is impossibleto determine get a
+        reference to the connection from a model instance in this context. It
+        is therefore impossible to determine the backend used. This method saves
+        the "add" boolean in a private instance attribute for use by a
+        connection-aware method such as get_db_prep_value.
+
+        See:
+            https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.pre_save
+
         """
-        # Need to determine backend engine. If not here, then we can override
-        # value in get_db_prep_value().
-        # Set value to today() for anything but MySQL and PostgreSQL's auto_now_add
-        import pdb; pdb.set_trace()
-        return super(django.db.models.Field, self).pre_save(model_instance, add)
+        self._get_prep_value_add = add
+        return super(django.db.models.DateField, self).pre_save(
+            model_instance,
+            add)
 
     def get_db_prep_value(self, value, connection, prepared=False):
         """
@@ -258,12 +267,40 @@ class TimestampField(django.db.models.DateTimeField):
             https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.get_db_prep_value
 
         """
-        #engine = connection.settings_dict['ENGINE']
+        # Reset instance attribute first in case of an error in this method.
+        add = self._get_prep_value_add
+        self._get_prep_value_add = None
 
-        #if engine == 'django.db.backends.mysql':
+        needs_datetime_formatting = True
+
+        if not prepared:
+            prepared_value = None
+
+            engine = connection.settings_dict['ENGINE']
+            add_value_req = (self.auto_now or self.auto_now_add) and add \
+                and value is None
+            update_value_req = (self.auto_now or self.auto_now_update) \
+                and not add and value is None
+
+            # Case: No field default and value is None.
+            if add_value_req or update_value_req:
+                if engine == 'django.db.backends.mysql':
+                    prepared_value = "CURRENT_TIMESTAMP"
+                elif engine == 'django.db.backends.postgresql':
+                    prepared_value = 'NOW()'
+                elif engine == 'django.db.backends.sqlite3':
+                    prepared_value = "datetime('now')"
+                needs_datetime_formatting = False
+
+        if needs_datetime_formatting:
+            prepared_value = super().get_db_prep_value(
+                value,
+                connection,
+                prepared)
+
+        #import pdb; pdb.set_trace()
+
+        return prepared_value
 
 
-
-
-        super().get_db_prep_value(value, connection, prepared)
 

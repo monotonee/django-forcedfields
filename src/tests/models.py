@@ -66,7 +66,7 @@ See:
 """
 this_module = sys.modules[__name__]
 for config in test_utils.TS_FIELD_TEST_CONFIGS:
-    test_model_class_name = test_utils.get_ts_field_test_model_class_name(
+    test_model_class_name = test_utils.get_ts_model_class_name(
         **config.kwargs_dict)
     test_model_class_members = {
         test_utils.TS_FIELD_TEST_ATTRNAME: django_forcedfields.TimestampField(

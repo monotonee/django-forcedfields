@@ -3,6 +3,7 @@ Tests of the timestamp field.
 
 """
 
+import inspect
 import unittest.mock as mock
 
 import django.core.exceptions
@@ -97,6 +98,10 @@ class TestTimestampField(django.test.TestCase):
 
         I'm just going to manually call the check() method here.
 
+        I concatenate a test iteration count to the dynamic class name to
+        prevent Django from issuing a warning "RuntimeWarning: Model
+        'tests.testmodel' was already registered."
+
         Note:
             Validation covers actual model attribute values, not the field class
             instance arguments. Checks cover the field class arguments and
@@ -114,12 +119,13 @@ class TestTimestampField(django.test.TestCase):
                 'auto_now': True,
                 'auto_now_update': True}}
 
+        check_test_count = 0
         for check_error_id, kwargs in check_tests.items():
             test_model_members = {
                 'ts_field_1': django_forcedfields.TimestampField(**kwargs),
                 '__module__':  __name__}
             TestModel = type(
-                'TestModel',
+                'TestModel' + str(check_test_count),
                 (django.db.models.Model,),
                 test_model_members)
             model_instance = TestModel(ts_field_1='2000-01-01 00:00:01')
@@ -128,6 +134,8 @@ class TestTimestampField(django.test.TestCase):
             with self.subTest(field_args=', '.join(kwargs.keys())):
                 self.assertEqual(len(check_results), 1)
                 self.assertEqual(check_results[0].id, check_error_id)
+
+            check_test_count = check_test_count + 1
 
     def test_field_deconstruction(self):
         """
@@ -168,9 +176,9 @@ class TestTimestampField(django.test.TestCase):
             https://mariadb.com/kb/en/mariadb/sql-statements-that-cause-an-implicit-commit/
 
         """
-        test_model_class_name = test_utils.get_ts_field_test_model_class_name(
+        test_model_class_name = test_utils.get_ts_model_class_name(
             **test_utils.TS_FIELD_TEST_CONFIGS[0].kwargs_dict)
-        test_model = getattr(test_models, test_model_class_name)
+        test_model_class = getattr(test_models, test_model_class_name)
         connection = django.db.connections[test_utils.ALIAS_MYSQL]
 
         sql_string = """
@@ -188,8 +196,8 @@ class TestTimestampField(django.test.TestCase):
         """
         sql_params = [
             connection.settings_dict['NAME'],
-            test_model._meta.db_table,
-            test_model._meta.fields[1].get_attname_column()[1]]
+            test_model_class._meta.db_table,
+            test_model_class._meta.fields[1].get_attname_column()[1]]
 
         with connection.cursor() as cursor:
             cursor.execute(sql_string, sql_params)
@@ -216,9 +224,9 @@ class TestTimestampField(django.test.TestCase):
             https://mariadb.com/kb/en/mariadb/sql-statements-that-cause-an-implicit-commit/
 
         """
-        test_model_class_name = test_utils.get_ts_field_test_model_class_name(
+        test_model_class_name = test_utils.get_ts_model_class_name(
             **test_utils.TS_FIELD_TEST_CONFIGS[0].kwargs_dict)
-        test_model = getattr(test_models, test_model_class_name)
+        test_model_class = getattr(test_models, test_model_class_name)
         connection = django.db.connections[test_utils.ALIAS_POSTGRESQL]
 
         sql_string = """
@@ -235,8 +243,8 @@ class TestTimestampField(django.test.TestCase):
         """
         sql_params = [
             connection.settings_dict['NAME'],
-            test_model._meta.db_table,
-            test_model._meta.fields[1].get_attname_column()[1]]
+            test_model_class._meta.db_table,
+            test_model_class._meta.fields[1].get_attname_column()[1]]
 
         with connection.cursor() as cursor:
             cursor.execute(sql_string, sql_params)
@@ -246,12 +254,113 @@ class TestTimestampField(django.test.TestCase):
         self.assertEqual(record[1], 'no')
         self.assertEqual(record[2], 'now()')
 
-    def test_field_values(self):
+    def test_field_save(self):
         """
         Test that the output values are correct in final SQL statements.
 
         For MySQL, this should bypass most of the django.db.DateTimeField value
         overrides.
 
+        TODO:
+            REMOVE THE TEST CONFIGS LIST SLICE
+
+        """
+        for config in test_utils.TS_FIELD_TEST_CONFIGS[:1]:
+            test_model_class_name = test_utils.get_ts_model_class_name(
+                **config.kwargs_dict)
+            test_model_class = getattr(test_models, test_model_class_name)
+            with self.subTest(test_model=test_model_class_name):
+                self._test_field_save_values(
+                    test_model_class,
+                    config.save_values_dict)
+
+    def _test_field_save_values(self, test_model_class, save_values_dict):
+        """
+        Test instantiating a test model class with multiple field values.
+
+        Args:
+            test_model_class (tests.models.*) Test Django model class.
+            save_values_dict (dict): The timestamp field test config attribute
+                containing model field attribute values and expected database
+                fetch values after saving.
+
+        """
+        for key, value in save_values_dict.items():
+            with self.subTest(attr_value=key):
+                self._test_attr_value_for_all_backends(
+                    test_model_class,
+                    key,
+                    value)
+
+    def _test_attr_value_for_all_backends(
+        self, test_model_class, attr_value, expected_value):
+        """
+        Run the test model saved value test for all available DB backends.
+
+        Args:
+            test_model_class (class): The class of the current model to use
+                in the tests.
+            attr_value: The value to save in the new model instance's attribute.
+            expected_value: The value that is expected to be retrieved from the
+                database after a successful save() call.
+
+        TODO:
+            Mock datetime.datetime.today() to ensure that parent DateTimeField
+            functionality is not the source of datetime values in the database.
+
+        """
+        for alias in test_utils.get_db_aliases():
+            if attr_value is django.db.models.NOT_PROVIDED:
+                test_model = test_model_class()
+            else:
+                test_kwargs = {
+                    test_utils.TS_FIELD_TEST_ATTRNAME: attr_value}
+                test_model = test_model_class(**test_kwargs)
+
+            backend = django.db.connections[alias].settings_dict['ENGINE']
+            with self.subTest(backend=backend):
+                if issubclass(expected_value.__class__, Exception):
+                    self.assertRaises(
+                        expected_value,
+                        test_model.save,
+                        using=alias)
+                else:
+                    test_model.save(using=alias)
+                    retrieved_test_model = test_model.__class__.objects.get(
+                        id=test_model.id)
+                    retrieved_value = getattr(
+                        retrieved_test_model,
+                        test_utils.TS_FIELD_TEST_ATTRNAME)
+                    if inspect.isclass(expected_value):
+                        retrieved_value = retrieved_value.__class__
+
+                    self.assertEqual(retrieved_value, expected_value)
+
+    def test_field_update(self):
+        """
+        Test that an UPDATE statement correctly produces auto date.
+
         """
         raise NotImplementedError('Complete this test you lazy bastard.')
+
+    def test_invalid_attribute_value(self):
+        """
+        Test that model attribute value is still validated.
+
+        Just testing to make sure that any custom field modificatiosn haven't
+        disrupted the parent DateTimeField's functionality.
+
+        """
+        test_model_class_name = test_utils.get_ts_model_class_name(
+            **test_utils.TS_FIELD_TEST_CONFIGS[0].kwargs_dict)
+        test_model_class = getattr(test_models, test_model_class_name)
+        connection = django.db.connections[test_utils.ALIAS_MYSQL]
+
+        test_model_kwargs = {
+            test_utils.TS_FIELD_TEST_ATTRNAME: 'invalid'}
+        test_model = test_model_class(**test_model_kwargs)
+
+        self.assertRaises(
+            django.core.exceptions.ValidationError,
+            test_model.save,
+            using=test_utils.ALIAS_MYSQL)
