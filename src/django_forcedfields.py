@@ -201,7 +201,6 @@ class TimestampField(django.db.models.DateTimeField):
             type_spec = ['TIMESTAMP']
             ts_default_default = 'DEFAULT CURRENT_TIMESTAMP'
             ts_default_on_update = 'ON UPDATE CURRENT_TIMESTAMP'
-
             if self.auto_now:
                 # CURRENT_TIMESTAMP on create and on update.
                 type_spec.extend([ts_default_default, ts_default_on_update])
@@ -216,11 +215,9 @@ class TimestampField(django.db.models.DateTimeField):
                 # Mutual exclusivity between auto_now and auto_now_update has
                 # already been ensured by this point.
                 type_spec.append(ts_default_on_update)
-
             db_type = ' '.join(type_spec)
         elif engine == 'django.db.backends.postgresql':
             type_spec = ['TIMESTAMP WITHOUT TIME ZONE']
-
             if self.auto_now or self.auto_now_add:
                 # CURRENT_TIMESTAMP on create
                 type_spec.append('DEFAULT CURRENT_TIMESTAMP')
@@ -228,7 +225,13 @@ class TimestampField(django.db.models.DateTimeField):
                 # Set specified default on creation, no ON UPDATE action.
                 # Note PostgreSQL uses double quotes for system identifiers.
                 type_spec.append("DEFAULT '" + str(self.default) + "'")
-
+            db_type = ' '.join(type_spec)
+        elif engine == 'django.db.backends.sqlite3':
+            type_spec = ['DATETIME']
+            if self.auto_now or self.auto_now_add:
+                 type_spec.append('DEFAULT CURRENT_TIMESTAMP')
+            elif self.has_default():
+                type_spec.append("DEFAULT '" + str(self.default) + "'")
             db_type = ' '.join(type_spec)
         else:
             db_type = super().db_type(connection)
@@ -267,7 +270,6 @@ class TimestampField(django.db.models.DateTimeField):
             https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.get_db_prep_value
 
         """
-        # Reset instance attribute first in case of an error in this method.
         add = self._get_prep_value_add
         self._get_prep_value_add = None
 
@@ -282,7 +284,6 @@ class TimestampField(django.db.models.DateTimeField):
             update_value_req = (self.auto_now or self.auto_now_update) \
                 and not add and value is None
 
-            # Case: No field default and value is None.
             if add_value_req or update_value_req:
                 if engine == 'django.db.backends.mysql':
                     prepared_value = "CURRENT_TIMESTAMP"
@@ -297,8 +298,6 @@ class TimestampField(django.db.models.DateTimeField):
                 value,
                 connection,
                 prepared)
-
-        #import pdb; pdb.set_trace()
 
         return prepared_value
 

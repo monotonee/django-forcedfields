@@ -217,11 +217,8 @@ class TestTimestampField(django.test.TestCase):
         database table structure. This module is supposed to test the custom
         field, not the underlying database.
 
-        information_schema.COLUMNS.COLUMN_DEFAULT is a longtext field.
-
         See:
-            https://mariadb.com/kb/en/mariadb/create-table/
-            https://mariadb.com/kb/en/mariadb/sql-statements-that-cause-an-implicit-commit/
+            https://www.postgresql.org/docs/current/static/infoschema-columns.html
 
         """
         test_model_class_name = test_utils.get_ts_model_class_name(
@@ -253,6 +250,44 @@ class TestTimestampField(django.test.TestCase):
         self.assertEqual(record[0], 'timestamp without time zone')
         self.assertEqual(record[1], 'no')
         self.assertEqual(record[2], 'now()')
+
+    def test_sqlite3_table_structure(self):
+        """
+        Test correct DB table structures with sqlite3 backend.
+
+        Because all db_type method return values were tested in another test
+        case, this method will only run a cursory set of checks on the actual
+        database table structure. This module is supposed to test the custom
+        field, not the underlying database.
+
+        Apparently PRAGMA statements cannot be prepared and/or parameterized.
+        A sqlite syntax exception is raised one attempts to pass parameters
+        to cursor.execute().
+
+        The PRAGMA table_info() return columns:
+        >>> [desc[0] for desc in cursor.description]
+        >>> ['cid', 'name', 'type', 'notnull', 'dflt_value', 'pk']
+
+        See:
+            https://www.sqlite.org/pragma.html#pragma_table_info
+
+        """
+        test_model_class_name = test_utils.get_ts_model_class_name(
+            **test_utils.TS_FIELD_TEST_CONFIGS[0].kwargs_dict)
+        test_model_class = getattr(test_models, test_model_class_name)
+        connection = django.db.connections[test_utils.ALIAS_SQLITE]
+
+        sql_string = 'PRAGMA table_info({!s})'.format(
+            test_model_class._meta.db_table)
+
+        with connection.cursor() as cursor:
+            cursor.execute(sql_string)
+            records = cursor.fetchall()
+        ts_record = records[1]
+
+        self.assertEqual(ts_record[2], 'DATETIME')
+        self.assertEqual(ts_record[3], 1)
+        self.assertEqual(ts_record[4], 'CURRENT_TIMESTAMP')
 
     def test_field_save(self):
         """
