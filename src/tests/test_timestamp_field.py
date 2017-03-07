@@ -295,15 +295,9 @@ class TestTimestampField(django.test.TransactionTestCase):
         self.assertEqual(ts_record[3], 1)
         self.assertEqual(ts_record[4], 'CURRENT_TIMESTAMP')
 
-    def test_field_insert(self):
+    def test_insert(self):
         """
-        Test that the output values are correct in final SQL statements.
-
-        For MySQL, this should bypass most of the django.db.DateTimeField value
-        overrides.
-
-        TODO:
-            REMOVE THE TEST CONFIGS LIST SLICE
+        Test that the values saved during INSERT operations are correct.
 
         """
         for config in test_utils.TS_FIELD_TEST_CONFIGS:
@@ -315,9 +309,13 @@ class TestTimestampField(django.test.TransactionTestCase):
                     test_model_class,
                     config.insert_values_dict)
 
-    def _test_field_insert_values(self, test_model_class, insert_values_dict):
+    def _test_field_insert_values(self, test_model_class, values_dict):
         """
-        Test instantiating a test model class with multiple field values.
+        Iteratively instantiate test model classes with different field values.
+
+        This is part of, and in preparation for, a test of the INSERT operations
+        with the timestamp field. This method is defined separately to break up
+        deep nesting of blocks.
 
         Args:
             test_model_class (tests.models.*) Test Django model class.
@@ -326,7 +324,7 @@ class TestTimestampField(django.test.TransactionTestCase):
                 fetch values after insert.
 
         """
-        for key, value in insert_values_dict.items():
+        for key, value in values_dict.items():
             with self.subTest(attr_value=key):
                 self._test_field_insert_values_for_all_backends(
                     test_model_class,
@@ -336,7 +334,9 @@ class TestTimestampField(django.test.TransactionTestCase):
     def _test_field_insert_values_for_all_backends(
         self, test_model_class, attr_value, expected_value):
         """
-        Run the test model saved value test for all available DB backends.
+        Run the test of the field attribute value for all available DB backends.
+
+        This method is defined separately to break up deep nesting of blocks.
 
         Args:
             test_model_class (class): The class of the current model to use
@@ -344,10 +344,6 @@ class TestTimestampField(django.test.TransactionTestCase):
             attr_value: The value to save in the new model instance's attribute.
             expected_value: The value that is expected to be retrieved from the
                 database after a successful save() call.
-
-        TODO:
-            Mock datetime.datetime.today() to ensure that parent DateTimeField
-            functionality is not the source of datetime values in the database.
 
         """
         for alias in test_utils.get_db_aliases():
@@ -360,8 +356,8 @@ class TestTimestampField(django.test.TransactionTestCase):
 
             engine = django.db.connections[alias].settings_dict['ENGINE']
             with self.subTest(backend=engine):
-                expect_class = inspect.isclass(expected_value)
-                if expect_class and issubclass(expected_value, Exception):
+                class_expected = inspect.isclass(expected_value)
+                if class_expected and issubclass(expected_value, Exception):
                     self.assertRaises(
                         expected_value,
                         test_model.save,
@@ -373,17 +369,104 @@ class TestTimestampField(django.test.TransactionTestCase):
                     retrieved_value = getattr(
                         retrieved_record_model,
                         test_utils.TS_FIELD_TEST_ATTRNAME)
-                    if expect_class:
+                    if class_expected:
                         retrieved_value = retrieved_value.__class__
 
                     self.assertEqual(retrieved_value, expected_value)
 
-    def test_field_update(self):
+    def test_update(self):
         """
-        Test that an UPDATE statement correctly produces auto date.
+        Test that an UPDATE statement works correctly in specific cases.
+
+        Test that the timestamp field value is unchanged when only auto_now_add
+        is enabled and test that the timestamp field is automatically updated
+        when only auto_now_update is enabled.
+
+        Unfortunately, this test is impossible to isolate from any side effects
+        of a broken INSERT operation in the timestamp field.
 
         """
-        raise NotImplementedError('Complete this test you lazy bastard.')
+        for alias in test_utils.get_db_aliases():
+            engine = django.db.connections[alias].settings_dict['ENGINE']
+            with self.subTest(backend=engine):
+                self._test_update_insert_only(alias)
+                self._test_update_update_only(alias)
+
+    def _test_update_insert_only(self, alias):
+        """
+        Test that automatic update is NOT triggered when not enabled.
+
+        Test that the timestamp field value is unchanged when only auto_now_add
+        is enabled.
+
+        Unfortunately, this test is impossible to isolate from any side effects
+        of a broken INSERT operation in the timestamp field.
+
+        Args:
+            alias (string): The DATABASES Django settings used to specify a
+                specific database backend for an operation.
+
+        """
+        # Insert a record and retrieve value fresh from database.
+        add_only_model_class_name = test_utils.get_ts_model_class_name(
+            **{'auto_now_add': True})
+        add_only_class = getattr(test_models, add_only_model_class_name)
+        add_only_model = add_only_class()
+        add_only_model.save(using=alias)
+        retrieved_model = add_only_class.objects.using(alias).get(
+            id=add_only_model.id)
+        inserted_value = getattr(
+            retrieved_model,
+            test_utils.TS_FIELD_TEST_ATTRNAME)
+
+        # Update the same record and retrieve value fresh from database.
+        setattr(add_only_model, test_utils.UPDATE_FIELD_TEST_ATTRNAME, 1)
+        add_only_model.save()
+        retrieved_model = add_only_class.objects.using(alias).get(
+            id=add_only_model.id)
+        updated_value = getattr(
+            retrieved_model,
+            test_utils.TS_FIELD_TEST_ATTRNAME)
+
+        self.assertEqual(inserted_value, updated_value)
+
+    def _test_update_update_only(self, alias):
+        """
+        Test that automatic update IS triggered when exclusively enabled.
+
+        Test that the timestamp field is automatically updated when only
+        auto_now_update is enabled.
+
+        Unfortunately, this test is impossible to isolate from any side effects
+        of a broken INSERT operation in the timestamp field.
+
+        Args:
+            alias (string): The DATABASES Django settings used to specify a
+                specific database backend for an operation.
+
+        """
+        # Insert a record and retrieve value fresh from database.
+        update_only_model_class_name = test_utils.get_ts_model_class_name(
+            **{'auto_now_update': True, 'null': True})
+        update_only_class = getattr(test_models, update_only_model_class_name)
+        update_only_model = update_only_class()
+        update_only_model.save(using=alias)
+        retrieved_model = update_only_class.objects.using(alias).get(
+            id=update_only_model.id)
+        inserted_value = getattr(
+            retrieved_model,
+            test_utils.TS_FIELD_TEST_ATTRNAME)
+
+        # Update the same record and retrieve value fresh from database.
+        setattr(update_only_model, test_utils.UPDATE_FIELD_TEST_ATTRNAME, 1)
+        update_only_model.save()
+        retrieved_model = update_only_class.objects.using(alias).get(
+            id=update_only_model.id)
+        updated_value = getattr(
+            retrieved_model,
+            test_utils.TS_FIELD_TEST_ATTRNAME)
+
+        self.assertNotEqual(inserted_value, updated_value)
 
     def test_saved_value_today(self):
         """

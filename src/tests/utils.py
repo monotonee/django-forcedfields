@@ -224,6 +224,7 @@ TS_FIELD_TEST_CONFIGS = [
             None: None,
             _default_datetime: _default_datetime
         })]
+UPDATE_FIELD_TEST_ATTRNAME = 'update_field_1'
 
 
 def get_ts_model_class_name(**kwargs):

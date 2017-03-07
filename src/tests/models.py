@@ -71,6 +71,8 @@ for config in test_utils.TS_FIELD_TEST_CONFIGS:
     test_model_class_members = {
         test_utils.TS_FIELD_TEST_ATTRNAME: django_forcedfields.TimestampField(
             **config.kwargs_dict),
+        test_utils.UPDATE_FIELD_TEST_ATTRNAME: \
+            django.db.models.SmallIntegerField(null=True),
         '__module__': __name__}
     test_model_class = type(
         test_model_class_name,
