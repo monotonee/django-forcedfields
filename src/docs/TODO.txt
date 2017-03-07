@@ -34,6 +34,8 @@ FixedCharField
 TimestampField
     Add auto_now_update keyword argument
     Add validation for TIMESTAMP MySQL date limit? Unix epoch
+    auto_now = "force_now" vs default callable returning datetime.today()
+    Django default is None/empty string
 
 Before release:
     Run style checker and linter
