@@ -3,6 +3,7 @@ Tests of the timestamp field.
 
 """
 
+import datetime
 import inspect
 import unittest.mock as mock
 
@@ -403,7 +404,7 @@ class TestTimestampField(django.test.TransactionTestCase):
         of a broken INSERT operation in the timestamp field.
 
         Args:
-            alias (string): The DATABASES Django settings used to specify a
+            alias (string): The DATABASES Django settings key used to specify a
                 specific database backend for an operation.
 
         """
@@ -441,7 +442,7 @@ class TestTimestampField(django.test.TransactionTestCase):
         of a broken INSERT operation in the timestamp field.
 
         Args:
-            alias (string): The DATABASES Django settings used to specify a
+            alias (string): The DATABASES Django settings key used to specify a
                 specific database backend for an operation.
 
         """
@@ -470,10 +471,28 @@ class TestTimestampField(django.test.TransactionTestCase):
 
     def test_saved_value_today(self):
         """
-        Test that the automatic timestamp value is indeed for current time.
+        Test that the automatic timestamp value is the current time.
 
         """
-        raise NotImplementedError('Complete this test you lazy bastard.')
+        for alias in test_utils.get_db_aliases():
+            engine = django.db.connections[alias].settings_dict['ENGINE']
+            with self.subTest(backend=engine):
+                test_model_class_name = test_utils.get_ts_model_class_name(
+                    **{'auto_now_add': True})
+                test_model_class = getattr(test_models, test_model_class_name)
+                test_model = test_model_class()
+                test_model.save(using=alias)
+                retrieved_model = test_model_class.objects.using(alias).get(
+                    id=test_model.id)
+                retrieved_value = getattr(
+                    retrieved_model,
+                    test_utils.TS_FIELD_TEST_ATTRNAME)
+                expected_value = datetime.datetime.today()
+
+                self.assertEqual(retrieved_value.date(), expected_value.date())
+                self.assertEqual(retrieved_value.hour, expected_value.hour)
+                self.assertEqual(retrieved_value.minute, expected_value.minute)
+
 
     def test_invalid_attribute_value(self):
         """
