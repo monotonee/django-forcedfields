@@ -10,6 +10,8 @@ See:
 
 """
 
+import datetime
+
 import django.core.checks
 import django.db
 
@@ -120,6 +122,8 @@ class TimestampField(django.db.models.DateTimeField):
         default option may not be None.
 
         Valid permutations:
+            <empty set>
+            null
             auto_now
             auto_now + null
             auto_now_add
@@ -148,18 +152,9 @@ class TimestampField(django.db.models.DateTimeField):
             failed_checks.append(
                 django.core.checks.Error(
                     'The option auto_now is mutually exclusive with the option '
-                    'auto_now_update.',
+                        'auto_now_update.',
                     obj=self,
                     id=__name__ + '.E160'))
-
-        # If null is False, I believe Django will simply attempt to store the
-        # None default as an empty string.
-        #if not self.null and self.default == None:
-            #failed_checks.append(
-                #django.core.checks.Error(
-                    #'If the option "default" is None, then the "null" option '
-                    #'must be True.',
-                    #obj=self))
 
         return failed_checks
 
@@ -209,12 +204,20 @@ class TimestampField(django.db.models.DateTimeField):
                 type_spec.append(ts_default_default)
             elif self.has_default():
                 # Set specified default on creation, no ON UPDATE action.
-                type_spec.append("DEFAULT '" + str(self.default) + "'")
+                type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
 
             if self.auto_now_update:
                 # Mutual exclusivity between auto_now and auto_now_update has
                 # already been ensured by this point.
                 type_spec.append(ts_default_on_update)
+
+            if len(type_spec) == 1:
+                # Disable default behavior if no special kwargs passed.
+                if self.null:
+                    type_spec.append('DEFAULT NULL')
+                else:
+                    type_spec.append('DEFAULT 0')
+
             db_type = ' '.join(type_spec)
         elif engine == 'django.db.backends.postgresql':
             type_spec = ['TIMESTAMP WITHOUT TIME ZONE']
@@ -223,15 +226,15 @@ class TimestampField(django.db.models.DateTimeField):
                 type_spec.append('DEFAULT CURRENT_TIMESTAMP')
             elif self.has_default():
                 # Set specified default on creation, no ON UPDATE action.
-                # Note PostgreSQL uses double quotes for system identifiers.
-                type_spec.append("DEFAULT '" + str(self.default) + "'")
+                # PostgreSQL uses double quotes ONLY for system identifiers.
+                type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
             db_type = ' '.join(type_spec)
         elif engine == 'django.db.backends.sqlite3':
             type_spec = ['DATETIME']
             if self.auto_now or self.auto_now_add:
                  type_spec.append('DEFAULT CURRENT_TIMESTAMP')
             elif self.has_default():
-                type_spec.append("DEFAULT '" + str(self.default) + "'")
+                type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
             db_type = ' '.join(type_spec)
         else:
             db_type = super().db_type(connection)
@@ -240,66 +243,132 @@ class TimestampField(django.db.models.DateTimeField):
 
     def pre_save(self, model_instance, add):
         """
-        Prevent ORM-layer assignment of current timestamp.
+        Add auto_now_update to parent class' pre_save() implementation.
 
-        The django.db.models.DateField and DateTimeField explicitly set the
-        current timestamp when auto_now or auto_now_add is True.
+        I would like to implement this so that if an explcitly-assigned value
+        exists on the model attribute, it will disable automatic setting of the
+        datetime. This may be a future feature. On the other hand, that behavior
+        can be largely emulated by setting self.default to a callable that
+        returns datetime.datetime.today() and setting all auto_now options to
+        False.
 
-        According to my current knowledge, it is impossibleto determine get a
-        reference to the connection from a model instance in this context. It
-        is therefore impossible to determine the backend used. This method saves
-        the "add" boolean in a private instance attribute for use by a
-        connection-aware method such as get_db_prep_value.
+        Previously, I had attempted to remove setting a "current" datetime value
+        from within the ORM layer, instead allowing the DB engine to set it
+        using database functions such as NOW() or keywords such as
+        CURRENT_TIMESTAMP.
+
+        Unfortunately, as is often the case, the ORM contains a limitation in
+        that any and all output by get_db_prep_value() is quoted in the final,
+        compiled SQL string output by the ORM. PostgreSQL and sqlite3
+        interpreted NOW() as a function even surrounded by quotes but MySQL did
+        not. I can find no way to disable the quoting of get_db_prep_value()
+        output and so must rely on the ORM layer datetime.
+
+        I'm going to save my previous implementation here for easy retrieval in
+        case I discover a solution to the quote problem:
+        self._get_prep_value_add = add
+        return super(django.db.models.DateField, self).pre_save(
+            model_instance,
+            add)
 
         See:
             https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.pre_save
 
         """
         self._get_prep_value_add = add
-        return super(django.db.models.DateField, self).pre_save(
-            model_instance,
-            add)
 
-    def get_db_prep_value(self, value, connection, prepared=False):
+        if self.auto_now or (self.auto_now_update and not add) \
+            or (self.auto_now_add and add):
+            value = datetime.datetime.today()
+            setattr(model_instance, self.attname, value)
+        else:
+            value = super(django.db.models.DateField, self).pre_save(
+                model_instance, add)
+
+        return value
+
+    def get_db_prep_save(self, value, connection):
         """
-        self.default must be handled by the SQL compiler or somewhere else in
-        Django's ORM. I don't see the django.db.models.DateTimeField class
-        concerning itself with self.default at all.
+        MySQL, in typical fashion, presents an exception to the rule. When
+        a TIMESTAMP field with no DEFAULT or DEFAULT CURRENT_TIMESTAMP and that
+        is NOT NULL receives a NULL value on record INSERT or field UPDATE, it
+        is simply given the default value of zero which results in the timestamp
+        0000-00-00 00:00:00.
+
+        The other database systems PostgreSQL and sqlite3 rightfully raise
+        exceptions in the aforementioned condition, citing integrity or
+        constraint violations.
+
+        This method override attempts to normalize MySQL's behavior in this
+        situation by explicitly raising the same exception as the other Django
+        backends. The exception message may need to be moe specific.
 
         See:
-            https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.get_db_prep_value
+            https://dev.mysql.com/doc/refman/5.7/en/timestamp-initialization.html
 
         """
         add = self._get_prep_value_add
         self._get_prep_value_add = None
 
-        needs_datetime_formatting = True
+        engine = connection.settings_dict['ENGINE']
 
-        if not prepared:
-            prepared_value = None
+        # I apologize in advance for this condition.
+        if engine == 'django.db.backends.mysql' \
+            and add \
+            and not self.null \
+            and value is None:
+            raise django.db.utils.IntegrityError(
+                'NOT NULL constraint failed.')
 
-            engine = connection.settings_dict['ENGINE']
-            add_value_req = (self.auto_now or self.auto_now_add) and add \
-                and value is None
-            update_value_req = (self.auto_now or self.auto_now_update) \
-                and not add and value is None
+        return super().get_db_prep_save(value, connection)
 
-            if add_value_req or update_value_req:
-                if engine == 'django.db.backends.mysql':
-                    prepared_value = "CURRENT_TIMESTAMP"
-                elif engine == 'django.db.backends.postgresql':
-                    prepared_value = 'NOW()'
-                elif engine == 'django.db.backends.sqlite3':
-                    prepared_value = "datetime('now')"
-                needs_datetime_formatting = False
+    #def get_db_prep_value(self, value, connection, prepared=False):
+        #"""
+        #Generate the raw output value for SQL compiler.
 
-        if needs_datetime_formatting:
-            prepared_value = super().get_db_prep_value(
-                value,
-                connection,
-                prepared)
+        #self.default is handled by the base Field class. If no model attribute
+        #value is set and no default value is explicitly set, then the field
+        #default is None or empty string.
 
-        return prepared_value
+        #This is very likely an incomplete implementation and has not been fully
+        #tested. It is saved here for a short time in case a solutiion is found
+        #to Django ORM automatically adding quotes around the value returned by
+        #this method. See the doc block for this class' pre_save() method.
+
+        #See:
+            #https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.get_db_prep_value
+
+        #"""
+        #add = self._get_prep_value_add
+        #self._get_prep_value_add = None
+
+        #needs_datetime_formatting = True
+
+        #if not prepared:
+            #prepared_value = None
+
+            #engine = connection.settings_dict['ENGINE']
+            #add_value_req = (self.auto_now or self.auto_now_add) and add \
+                #and value is None
+            #update_value_req = (self.auto_now or self.auto_now_update) \
+                #and not add and value is None
+
+            #if add_value_req or update_value_req:
+                #if engine == 'django.db.backends.mysql':
+                    #prepared_value = "CURRENT_TIMESTAMP"
+                #elif engine == 'django.db.backends.postgresql':
+                    #prepared_value = 'NOW()'
+                #elif engine == 'django.db.backends.sqlite3':
+                    #prepared_value = "datetime('now')"
+                #needs_datetime_formatting = False
+
+        #if needs_datetime_formatting:
+            #prepared_value = super().get_db_prep_value(
+                #value,
+                #connection,
+                #prepared)
+
+        #return prepared_value
 
 
 
