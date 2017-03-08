@@ -11,8 +11,8 @@ import sys
 
 import django.db
 
-from . import utils as test_utils
 import django_forcedfields
+from . import utils as test_utils
 
 
 class FixedCharRecord(django.db.models.Model):

@@ -10,9 +10,9 @@ import django.core.exceptions
 import django.db
 import django.test
 
+import django_forcedfields
 from . import models as test_models
 from . import utils as test_utils
-import django_forcedfields
 
 
 class TestFixedCharField(django.test.TestCase):
@@ -190,4 +190,3 @@ class TestFixedCharField(django.test.TestCase):
                 result_record = test_models.FixedCharRecord.objects\
                     .using(alias).get(char_field_1=test_value)
                 self.assertEqual(result_record.char_field_1, test_value)
-
