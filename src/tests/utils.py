@@ -19,24 +19,22 @@ import sys
 
 import django.db
 
-"""
-Utilities to assist with referencing DATABASES settings dictionary.
 
-Originally, I attempted to leave the "default" DATABASES alias empty and to
-define each database by a non-default, explicit alias. However, despite my
-use of database routers, the Django TestCase still produced an error when
-tearing down the test case when the "default" alias was empty. The Django
-bug report below describes the error. For now, I'm just going to set
-"default" to point to the MySQL service instance as I'm tired of fighting
-with Django over anything remotely unusual in the way I want to structure
-my code.
-
-See:
-    https://code.djangoproject.com/ticket/25504
-    https://docs.djangoproject.com/en/dev/topics/db/multi-db/
-    https://github.com/django/django/blob/master/django/core/management/commands/inspectdb.py
-
-"""
+# Utilities to assist with referencing DATABASES settings dictionary.
+#
+# Originally, I attempted to leave the "default" DATABASES alias empty and to
+# define each database by a non-default, explicit alias. However, despite my
+# use of database routers, the Django TestCase still produced an error when
+# tearing down the test case when the "default" alias was empty. The Django
+# bug report below describes the error. For now, I'm just going to set
+# "default" to point to the MySQL service instance as I'm tired of fighting
+# with Django over anything remotely unusual in the way I want to structure
+# my code.
+#
+# See:
+# https://code.djangoproject.com/ticket/25504
+# https://docs.djangoproject.com/en/dev/topics/db/multi-db/
+# https://github.com/django/django/blob/master/django/core/management/commands/inspectdb.py
 ALIAS_MYSQL = 'default'
 ALIAS_POSTGRESQL = 'postgresql'
 ALIAS_SQLITE = 'sqlite3'
@@ -53,15 +51,13 @@ def get_db_aliases():
             module's constant attribute.
 
     """
-    return [member[1] for member
+    return [
+        member[1] for member
         in inspect.getmembers(sys.modules[__name__])
         if member[0].startswith('ALIAS_')]
 
 
-"""
-Utilities to assist with timestamp field testing.
-
-"""
+# Utilities to assist with timestamp field testing.
 class TimestampFieldTestConfig:
     """
     A simple class to help centralize and organize test configs.
@@ -106,8 +102,8 @@ class TimestampFieldTestConfig:
         self.insert_values_dict = insert_values_dict
 
 
-_default_datetime = datetime.datetime.today().replace(microsecond=0)
-_default_datetime_str = str(_default_datetime)
+_DEFAULT_DATETIME = datetime.datetime.today().replace(microsecond=0)
+_DEFAULT_DATETIME_STR = str(_DEFAULT_DATETIME)
 TS_FIELD_TEST_ATTRNAME = 'ts_field_1'
 TS_FIELD_TEST_CONFIGS = [
     TimestampFieldTestConfig(
@@ -117,7 +113,7 @@ TS_FIELD_TEST_CONFIGS = [
         {
             django.db.models.NOT_PROVIDED: django.db.utils.IntegrityError,
             None: django.db.utils.IntegrityError,
-            _default_datetime: _default_datetime
+            _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }),
     TimestampFieldTestConfig(
         {'null': True},
@@ -126,7 +122,7 @@ TS_FIELD_TEST_CONFIGS = [
         {
             django.db.models.NOT_PROVIDED: None,
             None: None,
-            _default_datetime: _default_datetime
+            _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }),
     TimestampFieldTestConfig(
         {'auto_now': True},
@@ -135,7 +131,7 @@ TS_FIELD_TEST_CONFIGS = [
         {
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
-            _default_datetime: datetime.datetime
+            _DEFAULT_DATETIME: datetime.datetime
         }),
     TimestampFieldTestConfig(
         {'auto_now': True, 'null': True},
@@ -144,7 +140,7 @@ TS_FIELD_TEST_CONFIGS = [
         {
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
-            _default_datetime: datetime.datetime
+            _DEFAULT_DATETIME: datetime.datetime
         }),
     TimestampFieldTestConfig(
         {'auto_now_add': True},
@@ -153,7 +149,7 @@ TS_FIELD_TEST_CONFIGS = [
         {
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
-            _default_datetime: datetime.datetime
+            _DEFAULT_DATETIME: datetime.datetime
         }),
     TimestampFieldTestConfig(
         {'auto_now_add': True, 'auto_now_update': True},
@@ -162,7 +158,7 @@ TS_FIELD_TEST_CONFIGS = [
         {
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
-            _default_datetime: datetime.datetime
+            _DEFAULT_DATETIME: datetime.datetime
         }),
     TimestampFieldTestConfig(
         {'auto_now_add': True, 'auto_now_update': True, 'null': True},
@@ -171,7 +167,7 @@ TS_FIELD_TEST_CONFIGS = [
         {
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
-            _default_datetime: datetime.datetime
+            _DEFAULT_DATETIME: datetime.datetime
         }),
     TimestampFieldTestConfig(
         {'auto_now_add': True, 'null': True},
@@ -180,7 +176,7 @@ TS_FIELD_TEST_CONFIGS = [
         {
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
-            _default_datetime: datetime.datetime
+            _DEFAULT_DATETIME: datetime.datetime
         }),
     TimestampFieldTestConfig(
         {'auto_now_update': True},
@@ -189,7 +185,7 @@ TS_FIELD_TEST_CONFIGS = [
         {
             django.db.models.NOT_PROVIDED: django.db.utils.IntegrityError,
             None: django.db.utils.IntegrityError,
-            _default_datetime: _default_datetime
+            _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }),
     TimestampFieldTestConfig(
         {'auto_now_update': True, 'null': True},
@@ -198,45 +194,45 @@ TS_FIELD_TEST_CONFIGS = [
         {
             django.db.models.NOT_PROVIDED: None,
             None: None,
-            _default_datetime: _default_datetime
+            _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }),
     TimestampFieldTestConfig(
-        {'auto_now_update': True, 'default': _default_datetime},
-        'TIMESTAMP DEFAULT \'' + _default_datetime_str \
+        {'auto_now_update': True, 'default': _DEFAULT_DATETIME},
+        'TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR \
             + '\' ON UPDATE CURRENT_TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _default_datetime_str + "'",
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
         {
-            django.db.models.NOT_PROVIDED: _default_datetime,
+            django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
             None: django.db.utils.IntegrityError,
-            _default_datetime: _default_datetime
+            _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }),
     TimestampFieldTestConfig(
-        {'auto_now_update': True, 'default': _default_datetime, 'null': True},
-        'TIMESTAMP DEFAULT \'' + _default_datetime_str \
+        {'auto_now_update': True, 'default': _DEFAULT_DATETIME, 'null': True},
+        'TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR \
             + '\' ON UPDATE CURRENT_TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _default_datetime_str + "'",
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
         {
-            django.db.models.NOT_PROVIDED: _default_datetime,
+            django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
             None: None,
-            _default_datetime: _default_datetime
+            _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }),
     TimestampFieldTestConfig(
-        {'default': _default_datetime},
-        'TIMESTAMP DEFAULT \'' + _default_datetime_str + '\'',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _default_datetime_str + "'",
+        {'default': _DEFAULT_DATETIME},
+        'TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\'',
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
         {
-            django.db.models.NOT_PROVIDED: _default_datetime,
+            django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
             None: django.db.utils.IntegrityError,
-            _default_datetime: _default_datetime
+            _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }),
     TimestampFieldTestConfig(
-        {'default': _default_datetime, 'null': True},
-        'TIMESTAMP DEFAULT \'' + _default_datetime_str + '\'',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _default_datetime_str + "'",
+        {'default': _DEFAULT_DATETIME, 'null': True},
+        'TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\'',
+        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
         {
-            django.db.models.NOT_PROVIDED: _default_datetime,
+            django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
             None: None,
-            _default_datetime: _default_datetime
+            _DEFAULT_DATETIME: _DEFAULT_DATETIME
         })]
 UPDATE_FIELD_TEST_ATTRNAME = 'update_field_1'
 
@@ -274,6 +270,7 @@ class TemporaryMigration:
 
     """
 
+    ed_kwargs = {'atomic': True}
     sql_temporary = 'TEMPORARY'
 
     def __init__(self, connection, model):
@@ -291,12 +288,7 @@ class TemporaryMigration:
             https://github.com/django/django/blob/master/django/db/backends/base/schema.py
 
         """
-        #editor_kwargs = {
-            #'atomic': True,
-            #'collect_sql': True}
-        editor_kwargs = {
-            'atomic': True}
-        with self._connection.schema_editor(**editor_kwargs) as schema_editor:
+        with self._connection.schema_editor(**self.ed_kwargs) as schema_editor:
             schema_editor.sql_create_table = (
                 schema_editor.sql_create_table[:7]
                 + self.sql_temporary
@@ -304,7 +296,7 @@ class TemporaryMigration:
             schema_editor.create_model(self._model)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        with self._connection.schema_editor(**editor_kwargs) as schema_editor:
+        with self._connection.schema_editor(**self.ed_kwargs) as schema_editor:
             schema_editor.sql_create_table = \
                 schema_editor.sql_create_table.replace(self.sql_temporary, '')
             schema_editor.delete_model(self._model)

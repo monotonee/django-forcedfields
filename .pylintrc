@@ -47,7 +47,14 @@ load-plugins=
 
 # Supress all import errors until SublimeLinter-pylint gets virtualenv support.
 # Supress errors about locally defined disables.
-disable=import-error,I0011,too-few-public-methods
+#
+# Disabled bad-continuation due to incompatibility with Google style,
+# particularly the 4-space hanging indent with nothing on first line.
+# Will reenable when a solution is found to make it more flexible.
+# See:
+# https://google.github.io/styleguide/pyguide.html?showone=Line_length#Line_length
+# https://google.github.io/styleguide/pyguide.html?showone=Indentation#Indentation
+disable=import-error,I0011,too-few-public-methods,bad-continuation
 
 
 [REPORTS]

@@ -28,6 +28,13 @@ In readme:
         sqlite3 datetime (default Django behavior)
         Oracle?
 
+    using Google style guide and pylint raises false positives
+        bad-coninuation
+            4-space hanging indent; nothing on first line
+            https://google.github.io/styleguide/pyguide.html?showone=Line_length#Line_length
+            https://google.github.io/styleguide/pyguide.html?showone=Indentation#Indentation
+        bad-super-call
+
 FixedCharField
     Ensure that null keyword argument in FixedCharField actually stoes NULL in database?
 
