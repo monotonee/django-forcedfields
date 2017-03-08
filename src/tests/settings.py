@@ -17,6 +17,7 @@ See:
     https://docs.djangoproject.com/en/dev/topics/db/multi-db/
 
 """
+
 SECRET_KEY = 'fake-key'
 
 DATABASES = {
@@ -39,8 +40,6 @@ DATABASES = {
         'NAME': '/tmp/django-forcedfields.sqlite3.db',
     }
 }
-
-#DATABASE_ROUTERS = ['tests.routers.Router']
 
 INSTALLED_APPS = [
     'tests'

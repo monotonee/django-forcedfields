@@ -11,9 +11,9 @@ import django.core.management
 import django.db
 import django.test
 
+import django_forcedfields
 from . import models as test_models
 from . import utils as test_utils
-import django_forcedfields
 
 
 class TestTimestampField(django.test.TransactionTestCase):
@@ -43,6 +43,10 @@ class TestTimestampField(django.test.TransactionTestCase):
 
     @classmethod
     def setUpTestData(cls):
+        """
+        Override parent method. Single setup for data used in majority of cases.
+
+        """
         cls._db_aliases = test_utils.get_db_aliases()
 
     def _test_db_type_mysql(self):
@@ -98,12 +102,12 @@ class TestTimestampField(django.test.TransactionTestCase):
         """
         for key, value in values_dict.items():
             with self.subTest(attr_value=key):
-                self._test_insert_values_for_all_backends(
+                self._test_insert_all_backends(
                     test_model_class,
                     key,
                     value)
 
-    def _test_insert_values_for_all_backends(
+    def _test_insert_all_backends(
         self, test_model_class, attr_value, expected_value):
         """
         Run the test of the field attribute value for all available DB backends.
@@ -285,11 +289,11 @@ class TestTimestampField(django.test.TransactionTestCase):
             test_model_members = {
                 'ts_field_1': django_forcedfields.TimestampField(**kwargs),
                 '__module__':  __name__}
-            TestModel = type(
+            test_model_class = type(
                 'TestModel' + str(check_test_count),
                 (django.db.models.Model,),
                 test_model_members)
-            model_instance = TestModel(ts_field_1='2000-01-01 00:00:01')
+            model_instance = test_model_class(ts_field_1='2000-01-01 00:00:01')
             check_results = model_instance.check()
 
             with self.subTest(field_args=', '.join(kwargs.keys())):
@@ -339,6 +343,9 @@ class TestTimestampField(django.test.TransactionTestCase):
         """
         Test that model attribute value is still validated.
 
+        Backend doesn't matter since validation is not backend-dependent. Using
+        MySQL here.
+
         Just testing to make sure that any custom field modifications haven't
         disrupted the parent DateTimeField's functionality.
 
@@ -349,7 +356,6 @@ class TestTimestampField(django.test.TransactionTestCase):
         test_model_class_name = test_utils.get_ts_model_class_name(
             **test_utils.TS_FIELD_TEST_CONFIGS[0].kwargs_dict)
         test_model_class = getattr(test_models, test_model_class_name)
-        connection = django.db.connections[test_utils.ALIAS_MYSQL]
 
         test_model_kwargs = {
             test_utils.TS_FIELD_TEST_ATTRNAME: 'invalid'}
