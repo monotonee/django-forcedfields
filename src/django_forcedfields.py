@@ -8,6 +8,11 @@ principle for the sake of an ORM's conveniences.
 See:
     https://docs.djangoproject.com/en/dev/howto/custom-model-fields/
 
+I have attempted to follow Google's Python style standards.
+
+See:
+    https://google.github.io/styleguide/pyguide.html?showone=Line_length#Line_length
+
 """
 
 import datetime
@@ -139,11 +144,80 @@ class TimestampField(django.db.models.DateTimeField):
             failed_checks.append(
                 django.core.checks.Error(
                     'The option auto_now is mutually exclusive with the option '
-                        'auto_now_update.',
+                    'auto_now_update.',
                     obj=self,
                     id=__name__ + '.E160'))
 
         return failed_checks
+
+    def _db_type_mysql(self):
+        """
+        Assemble the db_type string for the MySQL backend.
+
+        Returns:
+            string: The db_type field definition string.
+
+        """
+        type_spec = ['TIMESTAMP']
+        ts_default_default = 'DEFAULT CURRENT_TIMESTAMP'
+        ts_default_on_update = 'ON UPDATE CURRENT_TIMESTAMP'
+        if self.auto_now:
+            # CURRENT_TIMESTAMP on create and on update.
+            type_spec.extend([ts_default_default, ts_default_on_update])
+        elif self.auto_now_add:
+            # CURRENT_TIMESTAMP on create only.
+            type_spec.append(ts_default_default)
+        elif self.has_default():
+            # Set specified default on creation, no ON UPDATE action.
+            type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
+
+        if self.auto_now_update:
+            # CURRENT_TIMESTAMP on update only.
+            # Mutual exclusivity between auto_now and auto_now_update has
+            # already been ensured by this point.
+            type_spec.append(ts_default_on_update)
+
+        if len(type_spec) == 1:
+            # Disable default behavior if no special kwargs passed.
+            if self.null:
+                type_spec.append('DEFAULT NULL')
+            else:
+                type_spec.append('DEFAULT 0')
+
+        return ' '.join(type_spec)
+
+    def _db_type_postgresql(self):
+        """
+        Assemble the db_type string for the PostgreSQL backend.
+
+        Returns:
+            string: The db_type field definition string.
+
+        """
+        type_spec = ['TIMESTAMP WITHOUT TIME ZONE']
+        if self.auto_now or self.auto_now_add:
+            # CURRENT_TIMESTAMP on create
+            type_spec.append('DEFAULT CURRENT_TIMESTAMP')
+        elif self.has_default():
+            # Set specified default on creation, no ON UPDATE action.
+            # PostgreSQL uses double quotes only for system identifiers.
+            type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
+        return ' '.join(type_spec)
+
+    def _db_type_sqlite(self):
+        """
+        Assemble the db_type string for the sqlite3 backend.
+
+        Returns:
+            string: The db_type field definition string.
+
+        """
+        type_spec = ['DATETIME']
+        if self.auto_now or self.auto_now_add:
+            type_spec.append('DEFAULT CURRENT_TIMESTAMP')
+        elif self.has_default():
+            type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
+        return ' '.join(type_spec)
 
     def db_type(self, connection):
         """
@@ -176,50 +250,11 @@ class TimestampField(django.db.models.DateTimeField):
         """
         engine = connection.settings_dict['ENGINE']
         if engine == 'django.db.backends.mysql':
-            type_spec = ['TIMESTAMP']
-            ts_default_default = 'DEFAULT CURRENT_TIMESTAMP'
-            ts_default_on_update = 'ON UPDATE CURRENT_TIMESTAMP'
-            if self.auto_now:
-                # CURRENT_TIMESTAMP on create and on update.
-                type_spec.extend([ts_default_default, ts_default_on_update])
-            elif self.auto_now_add:
-                # CURRENT_TIMESTAMP on create only.
-                type_spec.append(ts_default_default)
-            elif self.has_default():
-                # Set specified default on creation, no ON UPDATE action.
-                type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
-
-            if self.auto_now_update:
-                # CURRENT_TIMESTAMP on update only.
-                # Mutual exclusivity between auto_now and auto_now_update has
-                # already been ensured by this point.
-                type_spec.append(ts_default_on_update)
-
-            if len(type_spec) == 1:
-                # Disable default behavior if no special kwargs passed.
-                if self.null:
-                    type_spec.append('DEFAULT NULL')
-                else:
-                    type_spec.append('DEFAULT 0')
-
-            db_type = ' '.join(type_spec)
+            db_type = self._db_type_mysql()
         elif engine == 'django.db.backends.postgresql':
-            type_spec = ['TIMESTAMP WITHOUT TIME ZONE']
-            if self.auto_now or self.auto_now_add:
-                # CURRENT_TIMESTAMP on create
-                type_spec.append('DEFAULT CURRENT_TIMESTAMP')
-            elif self.has_default():
-                # Set specified default on creation, no ON UPDATE action.
-                # PostgreSQL uses double quotes only for system identifiers.
-                type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
-            db_type = ' '.join(type_spec)
+            db_type = self._db_type_postgresql()
         elif engine == 'django.db.backends.sqlite3':
-            type_spec = ['DATETIME']
-            if self.auto_now or self.auto_now_add:
-                 type_spec.append('DEFAULT CURRENT_TIMESTAMP')
-            elif self.has_default():
-                type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
-            db_type = ' '.join(type_spec)
+            db_type = self._db_type_sqlite()
         else:
             db_type = super().db_type(connection)
 
@@ -264,13 +299,13 @@ class TimestampField(django.db.models.DateTimeField):
 
         engine = connection.settings_dict['ENGINE']
 
-        # I apologize in advance for this condition.
-        if engine == 'django.db.backends.mysql' \
-            and add \
-            and not self.null \
-            and value is None:
-            raise django.db.utils.IntegrityError(
-                'NOT NULL constraint failed.')
+        # pylint doesn't like this conditional indent style but it is consistent
+        # with Google style and I like it. Leave it alone.
+        # Interested in finding config for pylint that will account for this.
+        # https://google.github.io/styleguide/pyguide.html?showone=Line_length#Line_length
+        if (engine == 'django.db.backends.mysql' and add and not self.null
+            and value is None):
+            raise django.db.utils.IntegrityError('NOT NULL constraint failed.')
 
         return super().get_db_prep_save(value, connection)
 
@@ -314,33 +349,45 @@ class TimestampField(django.db.models.DateTimeField):
         """
         self._get_prep_value_add = add
 
-        if self.auto_now or (self.auto_now_update and not add) \
-            or (self.auto_now_add and add):
+        # pylint doesn't like this conditional indent style but it is consistent
+        # with Google style and I like it. Leave it alone.
+        # https://google.github.io/styleguide/pyguide.html?showone=Line_length#Line_length
+        if (self.auto_now or (self.auto_now_update and not add)
+            or (self.auto_now_add and add)):
             value = datetime.datetime.today()
             setattr(model_instance, self.attname, value)
         else:
+            # This super() call is correct. Leave it alone.
+            # Skips DateTimeField and DateField pre_save() overrides while
+            # maintaining binding to current class instance.
+            # See: https://docs.python.org/3/library/functions.html#super
             value = super(django.db.models.DateField, self).pre_save(
                 model_instance, add)
 
         return value
 
-    #def get_db_prep_value(self, value, connection, prepared=False):
-        #"""
-        #Generate the raw output value for SQL compiler.
+    def get_db_prep_value(self, value, connection, prepared=False):
+        """
+        Generate the raw output value for SQL compiler.
 
-        #self.default is handled by the base Field class. If no model attribute
-        #value is set and no default value is explicitly set, then the field
-        #default is None or empty string.
+        self.default is handled by the base Field class. If no model attribute
+        value is set and no default value is explicitly set, then the field
+        default is None or empty string.
 
-        #This is very likely an incomplete implementation and has not been fully
-        #tested. It is saved here for a short time in case a solutiion is found
-        #to Django ORM automatically adding quotes around the value returned by
-        #this method. See the doc block for this class' pre_save() method.
+        As mentioned previously, the return value of this method is quoted in
+        the compile SQL string. Until I find a way around this and can allow the
+        current datetime to be set by the database instead of the ORM, I must
+        rely upon pre_save() for the current datetime. My previous method
+        definition will remain intact for the time being.
 
-        #See:
-            #https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.get_db_prep_value
+        This is very likely an incomplete implementation and has not been fully
+        tested. It is saved here for a short time in case a solutiion is found
+        to Django ORM automatically adding quotes around the value returned by
+        this method. See the doc block for this class' pre_save() method.
 
-        #"""
+        See:
+            https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.get_db_prep_value
+        """
         #add = self._get_prep_value_add
         #self._get_prep_value_add = None
 
@@ -371,3 +418,5 @@ class TimestampField(django.db.models.DateTimeField):
                 #prepared)
 
         #return prepared_value
+
+        return super().get_db_prep_value(value, connection, prepared)

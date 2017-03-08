@@ -8,4 +8,5 @@ postgres_cli:
 
 test:
 	python src/runtests.py
+	pylint --rcfile=.pylintrc src/django_forcedfields.py
 
