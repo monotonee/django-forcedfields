@@ -47,47 +47,35 @@ class TimestampField(django.db.models.DateTimeField):
     time. They contribute to database and record metadata.
 
     See:
-        https://stackoverflow.com/questions/409286/should-i-use-field-datetime-or-timestamp
+        http://stackoverflow.com/a/410458
 
     MySQL/MariaDB supports the TIMESTAMP data type which includes special
     modifiers to ease its use as a system utility. These include the
-    CURRENT_TIMESTAMP keyword which allows the system to automatically set
-    timestamp based on INSERT and/or UPDATE.
-
-    Django uses MySQL's DATETIME data type by default. This class uses MySQL's
-    TIMESTAMP data type instead. This field class will also disable Django's
-    application-layer auto_now and auto_now_add behavior, allowing the database
-    engine itself to handle automatic value creation and update.
+    ON UPDATE CURRENT_TIMESTAMP modifier which essentially creates an implicit
+    trigger. Django uses MySQL's DATETIME data type by default. This class uses
+    MySQL's TIMESTAMP data type instead.
 
     Warning:
         When using the MySQL backend, the database TIMESTAMP field will also be
-        updated when auto_now is True and when calling QuerySet.update().
-        Django's DateField and DateTimeField only set current timestamp under
-        auto_now when calling Model.save().
+        updated when auto_now or auto_now_update is True and when calling
+        QuerySet.update(). In constrast, Django's DateField and DateTimeField
+        only set current timestamp under auto_now when calling Model.save().
 
     See:
         https://docs.djangoproject.com/en/dev/ref/models/fields/#datefield
         https://mariadb.com/kb/en/mariadb/timestamp/
         https://github.com/django/django/blob/master/django/db/backends/mysql/base.py
 
-    PostgreSQL does not have anything resembling CURRENT_TIMESTAMP aside from
-    custom triggers. Django uses "timestamp with time zone" in its
+    PostgreSQL does not have anything resembling ON UPDATE CURRENT_TIMESTAMP
+    aside from custom triggers. Django uses "timestamp with time zone" in its
     DateTimeField. However, its DATETIME equivalent data type "timestamp"
-    does include the option to save without timezone. This lack of timestamp
-    most closely aligns with the intended use case of this field class and is
-    therefore used.
+    does include the option to save without timezone. The explciit lack of
+    timezone most closely aligns with the intended use case of this field class
+    and is therefore used.
 
     See:
         https://www.postgresql.org/docs/current/static/datatype-datetime.html
         https://github.com/django/django/blob/master/django/db/backends/postgresql/base.py
-
-    According to PEP 8, this class name could contain capitalized
-    "abbreviations" (MariaDB instead of Mariadb) but MariaDB isn't an acronym
-    such as HTTP and I prefer to maintain the demarkation of words within the
-    name.
-
-    See:
-        https://www.python.org/dev/peps/pep-0008/#descriptive-naming-styles
 
     """
 
@@ -95,16 +83,15 @@ class TimestampField(django.db.models.DateTimeField):
         """
         Override the init method to add the auto_now_update keyword argument.
 
+        Args:
+            auto_now_update (boolean): When true, enables the automatic setting
+                of the current timestamp on update operations only. Mutually
+                exclusive with auto_now.
+
         """
         self._get_prep_value_add = None
         self.auto_now_update = auto_now_update
         super().__init__(*args, **kwargs)
-
-    def deconstruct(self):
-        name, path, args, kwargs = super().deconstruct()
-        if self.auto_now_update:
-            kwargs['auto_now_update'] = True
-        return (name, path, args, kwargs)
 
     def _check_mutually_exclusive_options(self):
         """
@@ -112,8 +99,8 @@ class TimestampField(django.db.models.DateTimeField):
 
         django.db.models.fields.DateTimeCheckMixin is used to enforce mutual
         exclusivity between auto_now, auto_now_add, and default keyword
-        arguments. This restriction doesn't make a lot of sense in light of
-        MySQL's and Postgres' possible TIMESTAMP field combinations.
+        arguments. This method also adds a check for auto_now_update and
+        auto_now exclusivity.
 
         auto_now uses DEFAULT CURRENT_TIMESTAMP so auto_now and default are
         mutually exclusive. auto_now_add is mutually exclusive with auto_now
@@ -141,7 +128,7 @@ class TimestampField(django.db.models.DateTimeField):
             list: A list of additional Django check messages.
 
         See:
-            https://github.com/django/django/blob/master/django/db/models/fields/__init__.py#L1089
+            https://github.com/django/django/blob/master/django/db/models/fields/__init__.py
             https://docs.djangoproject.com/en/dev/topics/checks/
 
         """
@@ -160,34 +147,30 @@ class TimestampField(django.db.models.DateTimeField):
 
     def db_type(self, connection):
         """
-        The DateField/DateTimeField enforces mutual exclusivity between
-        auto_now, auto_now_add, and default. Check is performed between call to
-        db_type and the generation of actual SQL string. Therefore, these
-        conflicting instance attributes cannot even be set manually in a custom
-        field class.
+        Override the db_type method.
 
         As of MySQL 5.7 and MariaDB 10.1, TIMESTAMP fields are defaulted to
         DEFAULT CURRENT_TIMESTAMP and ON UPDATE CURRENT_TIMESTAMP on table
         creation. In MySQL/MariaDB, NULL, DEFAULT, and ON UPDATE are not
         mutually exclusive on a TIMESTAMP field.
 
+        See:
+            https://dev.mysql.com/doc/refman/en/timestamp-initialization.html
+            https://mariadb.com/kb/en/mariadb/timestamp/
+
         Type spec additions for self.null are not needed. Django magically
         appends NULL or NOT NULL to the end of the generated SQL. I'd look in
-        the base Field class for that.
+        the base Field class for that or in the backend-specific SQL compilers.
 
         Note that returning None from this method will cause Django to simply
         skip this field in its generated CREATE TABLE statements. This allows
         one to define the field manually and for Django to "get out of the way."
 
-        See:
-            https://dev.mysql.com/doc/refman/en/timestamp-initialization.html
-            https://mariadb.com/kb/en/mariadb/timestamp/
-
         In field deconstruction, Django's Field class uses the values from an
         instance's attributes rather than the passed **kwargs dict.
 
         See:
-            https://github.com/django/django/blob/master/django/db/models/fields/__init__.py#L365
+            https://github.com/django/django/blob/master/django/db/models/fields/__init__.py
             https://docs.djangoproject.com/en/dev/howto/custom-model-fields/#useful-methods
 
         """
@@ -207,6 +190,7 @@ class TimestampField(django.db.models.DateTimeField):
                 type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
 
             if self.auto_now_update:
+                # CURRENT_TIMESTAMP on update only.
                 # Mutual exclusivity between auto_now and auto_now_update has
                 # already been ensured by this point.
                 type_spec.append(ts_default_on_update)
@@ -226,7 +210,7 @@ class TimestampField(django.db.models.DateTimeField):
                 type_spec.append('DEFAULT CURRENT_TIMESTAMP')
             elif self.has_default():
                 # Set specified default on creation, no ON UPDATE action.
-                # PostgreSQL uses double quotes ONLY for system identifiers.
+                # PostgreSQL uses double quotes only for system identifiers.
                 type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
             db_type = ' '.join(type_spec)
         elif engine == 'django.db.backends.sqlite3':
@@ -241,70 +225,38 @@ class TimestampField(django.db.models.DateTimeField):
 
         return db_type
 
-    def pre_save(self, model_instance, add):
+    def deconstruct(self):
         """
-        Add auto_now_update to parent class' pre_save() implementation.
-
-        I would like to implement this so that if an explcitly-assigned value
-        exists on the model attribute, it will disable automatic setting of the
-        datetime. This may be a future feature. On the other hand, that behavior
-        can be largely emulated by setting self.default to a callable that
-        returns datetime.datetime.today() and setting all auto_now options to
-        False.
-
-        Previously, I had attempted to remove setting a "current" datetime value
-        from within the ORM layer, instead allowing the DB engine to set it
-        using database functions such as NOW() or keywords such as
-        CURRENT_TIMESTAMP.
-
-        Unfortunately, as is often the case, the ORM contains a limitation in
-        that any and all output by get_db_prep_value() is quoted in the final,
-        compiled SQL string output by the ORM. PostgreSQL and sqlite3
-        interpreted NOW() as a function even surrounded by quotes but MySQL did
-        not. I can find no way to disable the quoting of get_db_prep_value()
-        output and so must rely on the ORM layer datetime.
-
-        I'm going to save my previous implementation here for easy retrieval in
-        case I discover a solution to the quote problem:
-        self._get_prep_value_add = add
-        return super(django.db.models.DateField, self).pre_save(
-            model_instance,
-            add)
+        Override the deconstruct method.
 
         See:
-            https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.pre_save
+            https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.deconstruct
 
         """
-        self._get_prep_value_add = add
-
-        if self.auto_now or (self.auto_now_update and not add) \
-            or (self.auto_now_add and add):
-            value = datetime.datetime.today()
-            setattr(model_instance, self.attname, value)
-        else:
-            value = super(django.db.models.DateField, self).pre_save(
-                model_instance, add)
-
-        return value
+        name, path, args, kwargs = super().deconstruct()
+        if self.auto_now_update:
+            kwargs['auto_now_update'] = True
+        return (name, path, args, kwargs)
 
     def get_db_prep_save(self, value, connection):
         """
         MySQL, in typical fashion, presents an exception to the rule. When
-        a TIMESTAMP field with no DEFAULT or DEFAULT CURRENT_TIMESTAMP and that
-        is NOT NULL receives a NULL value on record INSERT or field UPDATE, it
-        is simply given the default value of zero which results in the timestamp
-        0000-00-00 00:00:00.
+        a TIMESTAMP field with no DEFAULT (including DEFAULT CURRENT_TIMESTAMP)
+        and that is NOT NULL receives a NULL value on record INSERT or UPDATE,
+        it is simply given the default value of zero which results in the
+        timestamp 0000-00-00 00:00:00.
 
-        The other database systems PostgreSQL and sqlite3 rightfully raise
-        exceptions in the aforementioned condition, citing integrity or
-        constraint violations.
+        In addition, the other database systems PostgreSQL and sqlite3
+        rightfully raise exceptions in the aforementioned condition, citing
+        integrity or constraint violations.
 
-        This method override attempts to normalize MySQL's behavior in this
-        situation by explicitly raising the same exception as the other Django
-        backends. The exception message may need to be moe specific.
+        This method override attempts to normalize MySQL's anomalous behavior in
+        these situations by explicitly raising the same exception as the other
+        Django backends. The exception message was copied from that of the other
+        backends but I may need to be write a more specific one.
 
         See:
-            https://dev.mysql.com/doc/refman/5.7/en/timestamp-initialization.html
+            https://dev.mysql.com/doc/refman/en/timestamp-initialization.html
 
         """
         add = self._get_prep_value_add
@@ -321,6 +273,56 @@ class TimestampField(django.db.models.DateTimeField):
                 'NOT NULL constraint failed.')
 
         return super().get_db_prep_save(value, connection)
+
+    def pre_save(self, model_instance, add):
+        """
+        Add auto_now_update to parent class' pre_save() implementation.
+
+        I would like to implement this so that if an explcitly-assigned value
+        exists on the model attribute, it will disable automatic setting of the
+        datetime. This may be a future feature. On the other hand, that behavior
+        can be largely emulated by setting "default" kwarg to a callable that
+        returns datetime.datetime.today() and setting all auto_now options to
+        False.
+
+        Previously, I had attempted to avoid setting a current datetime value
+        from within the ORM layer, instead allowing the DB engine to set it
+        using database functions such as NOW() or keywords such as
+        CURRENT_TIMESTAMP.
+
+        Unfortunately, as is often the case, the ORM contains a limitation in
+        that any and all output by get_db_prep_value() is quoted in the final,
+        compiled SQL string output by the ORM. PostgreSQL and sqlite3
+        interpreted NOW() as a function even surrounded by quotes but MySQL did
+        not. I can find no way to disable the quoting of get_db_prep_value()
+        output from within a custom field class and so must rely on the ORM
+        layer datetime value overrides.
+
+        I'm going to save my previous implementation here for easy retrieval in
+        case I discover a solution to the quote problem. Most logic was handled
+        in get_db_prep_value.
+
+        Example:
+            self._get_prep_value_add = add
+            return super(django.db.models.DateField, self).pre_save(
+                model_instance,
+                add)
+
+        See:
+            https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.pre_save
+
+        """
+        self._get_prep_value_add = add
+
+        if self.auto_now or (self.auto_now_update and not add) \
+            or (self.auto_now_add and add):
+            value = datetime.datetime.today()
+            setattr(model_instance, self.attname, value)
+        else:
+            value = super(django.db.models.DateField, self).pre_save(
+                model_instance, add)
+
+        return value
 
     #def get_db_prep_value(self, value, connection, prepared=False):
         #"""
@@ -369,6 +371,3 @@ class TimestampField(django.db.models.DateTimeField):
                 #prepared)
 
         #return prepared_value
-
-
-

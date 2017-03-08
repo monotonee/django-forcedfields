@@ -22,6 +22,20 @@ import django.db
 """
 Utilities to assist with referencing DATABASES settings dictionary.
 
+Originally, I attempted to leave the "default" DATABASES alias empty and to
+define each database by a non-default, explicit alias. However, despite my
+use of database routers, the Django TestCase still produced an error when
+tearing down the test case when the "default" alias was empty. The Django
+bug report below describes the error. For now, I'm just going to set
+"default" to point to the MySQL service instance as I'm tired of fighting
+with Django over anything remotely unusual in the way I want to structure
+my code.
+
+See:
+    https://code.djangoproject.com/ticket/25504
+    https://docs.djangoproject.com/en/dev/topics/db/multi-db/
+    https://github.com/django/django/blob/master/django/core/management/commands/inspectdb.py
+
 """
 ALIAS_MYSQL = 'default'
 ALIAS_POSTGRESQL = 'postgresql'
@@ -52,7 +66,7 @@ class TimestampFieldTestConfig:
     """
     A simple class to help centralize and organize test configs.
 
-    A named tuple might also serve this purpose but i'm currently of the
+    A named tuple might also serve this purpose but I'm currently of the
     opinion that a small class is more explicit, cleaner, and more easily
     documented.
 
@@ -72,7 +86,7 @@ class TimestampFieldTestConfig:
 
     def __init__(
         self, kwargs_dict, db_type_mysql, db_type_postgresql,
-        insert_values_dict=None):
+        insert_values_dict):
         """
         Args:
             kwargs_dict (dict): A dictionary of the k/v pairs to be passed as
@@ -229,13 +243,13 @@ UPDATE_FIELD_TEST_ATTRNAME = 'update_field_1'
 
 def get_ts_model_class_name(**kwargs):
     """
-    Create a string for use as part of a dynamic class name.
+    Create a string for use as a dynamic class name.
 
     When testing all permutations of field keyword arguments in model classes,
-    for instance, this function is used with the built-in function type() to
-    dynamically generate the new model class' name.
+    this function is used with the built-in function type() to dynamically
+    generate the new model class' unique name.
 
-    See usage of this function in the tests.models module.
+    See sample usage of this function in the tests.models module.
 
     Args:
         kwargs: The keyword args that will be passed to the field in the test
@@ -255,7 +269,8 @@ class TemporaryMigration:
 
     The table is created as TEMPORARY.
 
-    I'm only saving this until I'm sure it isn't needed to complete tests.
+    This class is no longer used in the tests. I'm saving this for future
+    reference and until I'm sure I won't need it.
 
     """
 

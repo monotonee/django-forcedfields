@@ -19,30 +19,12 @@ class TestFixedCharField(django.test.TestCase):
     """
     Defines tests for the fixed char field class.
 
-    Originally, I attempted to leave the "default" DATABASES alias empty and to
-    define each database by a non-default, explicit alias. However, despite my
-    use of database routers, the Django TestCase still produced an error when
-    tearing down the test case when the "default" alias was empty. The Django
-    bug report below describes the error. For now, I'm just going to set
-    "default" to point to the MySQL service instance as I'm tired of fighting
-    with Django over anything remotely unusual in the way I want to structure
-    my code.
-
-    See:
-        https://code.djangoproject.com/ticket/25504
-        https://docs.djangoproject.com/en/dev/topics/db/multi-db/
-        https://github.com/django/django/blob/master/django/core/management/commands/inspectdb.py
-
     """
 
     multi_db = True
 
     @classmethod
     def setUpTestData(cls):
-        """
-        TODO: Get test DB entity names from Django's TestCase class directly?
-
-        """
         cls._db_aliases = test_utils.get_db_aliases()
         cls._test_table_name = test_models.FixedCharRecord._meta.db_table
         cls._test_field_name = test_models.FixedCharRecord._meta.fields[1]\

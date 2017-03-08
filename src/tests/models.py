@@ -3,7 +3,7 @@ This file defines a set of very simple models for testing custom fields.
 
 No static timestamp field is defined here due to the large number of different
 keyword argument combinations that need to be tested. The test moodel classes
-for the timestamp field are defined dynamically in the test module.
+for the timestamp field are defined dynamically in this module.
 
 """
 
@@ -34,7 +34,7 @@ database, I needed a model instance for each possible timestamp field
 configuration. My options were:
     1. Statically define models in the tests models module.
     2. Use type() to dynamically generate model classes directly in test cases.
-    3. Dynamically define model classes in the models module.
+    3. Dynamically define model classes here in the models module.
 
 Option one seemed far too verbose, brittle, and tedious.
 
