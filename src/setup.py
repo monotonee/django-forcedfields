@@ -1,6 +1,15 @@
 """
 Note that include_package_data enables MANIFEST.in consumption.
 
+See:
+    https://setuptools.readthedocs.io/en/latest/setuptools.html#including-data-files
+
+Using semantic verisioning.
+
+See:
+    https://www.python.org/dev/peps/pep-0440/#public-version-identifiers
+    http://semver.org/
+
 """
 
 import os
@@ -21,15 +30,16 @@ setup(
     ],
     license='MIT',
     packages=find_packages(),
-    # url='<url here>',
+    url='https://github.com/monotonee/django-forcedfields',
 
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Framework :: Django',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
-        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3 :: Only',
+        'Topic :: Database'
     ],
     description='Defines model fields that force specific database data types.',
     keywords='char database django field model timestamp',
