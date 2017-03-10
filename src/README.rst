@@ -100,7 +100,7 @@ This field supports all `DateTimeField keyword arguments
 <https://docs.djangoproject.com/en/dev/ref/models/fields/#datefield>`_ and
 adds a new "auto_now_update" argument.
 
-**TimestampField,auto_now_update**
+**TimestampField.auto_now_update**
     auto_now_update is a boolean that, when True, sets a new timestamp field
     value on update operations *only*, not on insert.
 
@@ -160,7 +160,7 @@ To set up the development environment, a Vagrantfile is included. Install
     vagrant up
 
 Once Vagrant has completed provisioning, ``vagrant ssh`` into the box and start
-the database servers against which to run the test suite:::
+the database servers against which to run the test suite::
 
     docker-compose up -d
 
@@ -172,7 +172,7 @@ In this project, I use `Google's Python style guide
 <https://google.github.io/styleguide/pyguide.html>`_. Pylint doesn't play nicely
 with some of the styles. A few notes on pylint:
 
-* bad-coninuation
+* bad-continuation
 
     * Ignore most of these. Google style guide allows for a 4-space hanging
       indent with nothing on first line.
@@ -199,7 +199,7 @@ Oracle for a few reasons:
    As one can see, I use lightweight Docker containerized services to run the
    test databases. To use Oracle, one needs to provide the Oracle installation
    binaries. To get the binaries, one needs to sign in to Oracle's web site for
-   the privilege of downloading over 2.5 gigabytes. Too much unecessary pain,
+   the privilege of downloading over 2.5 gigabytes. Too much unnecessary pain,
    not enough return. If you use Oracle products, I sympathize and may god have
    mercy on your soul.
 
