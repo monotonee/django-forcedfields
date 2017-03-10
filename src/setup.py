@@ -20,7 +20,7 @@ with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as readme:
 
 setup(
     name='django-forcedfields',
-    version='0.0.1',
+    version='0.1.0',
 
     author='monotonee',
     author_email='monotonee@tuta.io',
