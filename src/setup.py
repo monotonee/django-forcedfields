@@ -29,7 +29,8 @@ setup(
         'django'
     ],
     license='MIT',
-    packages=find_packages(),
+    packages=find_packages(exclude=('tests',)),
+    py_modules=['django_forcedfields'],
     url='https://github.com/monotonee/django-forcedfields',
 
     classifiers=[
@@ -41,7 +42,9 @@ setup(
         'Programming Language :: Python :: 3 :: Only',
         'Topic :: Database'
     ],
-    description='Defines model fields that force specific database data types.',
+    description=(
+        'Django model fields designed to more precisely define data types in '
+        'database fields.'),
     keywords='char database django field model timestamp',
     long_description=README
 )
