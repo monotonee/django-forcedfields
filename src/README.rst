@@ -207,4 +207,4 @@ Oracle for a few reasons:
 
 #. Oracle seems to be `rarely used with Django
    <https://www.djangosites.org/stats/>`_.
-#. I hate Oracle as an entity and Oracle products.
+#. I hate Oracle products and Oracle as an entity.
