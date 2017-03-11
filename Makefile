@@ -1,5 +1,10 @@
 .PHONY: mariadb_cli postgresql_cli test
 
+build:
+	cd src && \
+	python setup.py sdist && \
+	python setup.py bdist_wheel
+
 mariadb_cli:
 	docker run -it --rm --network vagrant_default --link vagrant_mariadb_1 mariadb:latest mysql -hvagrant_mariadb_1 -p3306 -uroot -p
 
