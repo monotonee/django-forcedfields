@@ -17,7 +17,8 @@ import datetime
 import inspect
 import sys
 
-import django.db
+import django.db.models
+import django.db.utils
 
 
 # Utilities to assist with referencing DATABASES settings dictionary.

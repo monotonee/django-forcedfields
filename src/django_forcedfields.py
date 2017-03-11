@@ -18,7 +18,8 @@ See:
 import datetime
 
 import django.core.checks
-import django.db
+import django.db.models
+import django.db.utils
 
 
 class FixedCharField(django.db.models.CharField):

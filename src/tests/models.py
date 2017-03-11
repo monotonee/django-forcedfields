@@ -9,7 +9,7 @@ for the timestamp field are defined dynamically in this module.
 
 import sys
 
-import django.db
+import django.db.models
 
 import django_forcedfields
 from . import utils as test_utils
