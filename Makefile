@@ -1,4 +1,4 @@
-.PHONY: mariadb_cli postgresql_cli test
+.PHONY: build mariadb_cli postgresql_cli test
 
 build:
 	cd src && \
