@@ -30,8 +30,11 @@ pacman -S archlinux-keyring --noconfirm --quiet
 
 # Upgrade the system.
 # Sometimes kernel upgrades require initial ramdisk rebuild to detect devices.
+# See: https://www.archlinux.org/news/ca-certificates-utils-20170307-1-upgrade-requires-manual-intervention/
 echo 'TASK: Full system upgrade'
-pacman -Syu --noconfirm --quiet
+pacman -Syuw --noconfirm --quiet
+rm /etc/ssl/certs/ca-certificates.crt
+pacman -Su --noconfirm --quiet
 mkinitcpio -p linux
 
 # Install necessary packages.
