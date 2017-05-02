@@ -420,4 +420,8 @@ class TimestampField(django.db.models.DateTimeField):
 
         #return prepared_value
 
+        # pylint flags this under "useless-super-delegation". It is correct but
+        # this method remains defined for now so that I can preserve the
+        # comments and implementation until it is determined with certainty that
+        # I will abandon this approach.
         return super().get_db_prep_value(value, connection, prepared)
