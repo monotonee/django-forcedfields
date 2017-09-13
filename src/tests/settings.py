@@ -42,3 +42,10 @@ DATABASES = {
 INSTALLED_APPS = [
     'tests'
 ]
+
+# Silence "HINT: It seems you set a fixed date / time / datetime value as default for this field."
+# See:
+#     https://github.com/django/django/blob/master/django/db/models/fields/__init__.py
+#         django.db.models.fields.DateTimeCheckMixin.check()
+#         django.db.models.fields.DateField._check_fix_default_value()
+SILENCED_SYSTEM_CHECKS = ['fields.W161']
