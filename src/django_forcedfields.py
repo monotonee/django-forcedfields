@@ -340,7 +340,7 @@ class TimestampField(django.db.models.DateTimeField):
 
         engine = connection.settings_dict['ENGINE']
 
-        if (engine == 'django.db.backends.mysql' and add and not self.null and value is None):
+        if engine == 'django.db.backends.mysql' and add and not self.null and value is None:
             raise django.db.utils.IntegrityError('NOT NULL constraint failed.')
 
         return super().get_db_prep_save(value, connection)
@@ -382,7 +382,7 @@ class TimestampField(django.db.models.DateTimeField):
         # pylint doesn't like this conditional indent style but it is consistent
         # with Google style and I like it. Leave it alone.
         # https://google.github.io/styleguide/pyguide.html?showone=Line_length#Line_length
-        if (self.auto_now or (self.auto_now_update and not add) or (self.auto_now_add and add)):
+        if self.auto_now or (self.auto_now_update and not add) or (self.auto_now_add and add):
             value = datetime.datetime.today()
             setattr(model_instance, self.attname, value)
         else:
@@ -424,7 +424,8 @@ class TimestampField(django.db.models.DateTimeField):
 
             #engine = connection.settings_dict['ENGINE']
             #add_value_req = (self.auto_now or self.auto_now_add) and add and value is None
-            #update_value_req = (self.auto_now or self.auto_now_update) and not add and value is None
+            #update_value_req = (self.auto_now or self.auto_now_update)\
+                #and not add and value is None
 
             #if add_value_req or update_value_req:
                 #if engine == 'django.db.backends.mysql':
