@@ -1,4 +1,4 @@
-.PHONY: build mariadb_cli postgresql_cli test
+.PHONY: build mariadb_cli postgresql_cli tests
 
 build:
 	cd src && \
@@ -6,12 +6,12 @@ build:
 	python setup.py bdist_wheel
 
 mariadb_cli:
-	docker run -it --rm --network vagrant_default --link vagrant_mariadb_1 mariadb:latest mysql -hvagrant_mariadb_1 -p3306 -uroot -p
+	docker-compose exec mariadb mysql
 
 postgres_cli:
-	docker run -it --rm --network vagrant_default --link vagrant_postgresql_1 postgres:alpine psql -h vagrant_postgresql_1 -U tester
+	docker-compose exec postgresql psql -U tester
 
-test:
+tests:
 	python src/runtests.py
 	pylint --rcfile=.pylintrc src/django_forcedfields.py
 
