@@ -393,8 +393,8 @@ class TestTimestampField(django.test.TransactionTestCase):
 
         self.assertEqual(record[0], 'timestamp')
         self.assertEqual(record[1], 'no')
-        self.assertEqual(record[2], 'current_timestamp')
-        self.assertEqual(record[3], 'on update current_timestamp')
+        self.assertEqual(record[2], 'current_timestamp()')
+        self.assertEqual(record[3], 'on update current_timestamp()')
 
     def test_postgresql_table_structure(self):
         """
