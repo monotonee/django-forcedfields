@@ -1,9 +1,8 @@
 """
 Run tests by directly invoking this file from the Python interpreter.
 
-Running tests after setting up a skeleton Django environment allows for the
-use of Django testing tools. The default settings.TEST_RUNNER is currently
-django.test.runner.DiscoverRunner.
+Running tests after setting up a skeleton Django environment allows for the use of Django testing
+tools. The default settings.TEST_RUNNER is currently django.test.runner.DiscoverRunner.
 
 See:
     https://docs.djangoproject.com/en/dev/topics/testing/advanced/#using-the-django-test-runner-to-test-reusable-applications
@@ -28,9 +27,10 @@ if __name__ == '__main__':
         nargs='*',
         default=['tests'],
         help=(
-            'Specific test label(s) to run. Test labels may be a full Python '
-            'dotted path to a package, module, TestCase subclass, or test '
-            'method.'))
+            'Specific test label(s) to run. Test labels may be a full Python dotted path to a '
+            'package, module, TestCase subclass, or test method.'
+        )
+    )
     arguments = parser.parse_args()
 
     os.environ['DJANGO_SETTINGS_MODULE'] = 'tests.settings'

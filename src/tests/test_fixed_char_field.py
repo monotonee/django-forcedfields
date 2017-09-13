@@ -27,24 +27,20 @@ class TestFixedCharField(django.test.TestCase):
     def setUpTestData(cls):
         cls._db_aliases = test_utils.get_db_aliases()
         cls._test_table_name = test_models.FixedCharRecord._meta.db_table
-        cls._test_field_name = test_models.FixedCharRecord._meta.fields[1]\
-            .get_attname_column()[1]
-        cls._test_field_max_length = test_models.FixedCharRecord._meta\
-            .fields[1].max_length
+        cls._test_field_name = test_models.FixedCharRecord._meta.fields[1].get_attname_column()[1]
+        cls._test_field_max_length = test_models.FixedCharRecord._meta.fields[1].max_length
 
     def test_db_type(self):
         """
         Test simple output of the field's overridden "db_type" method.
 
         """
-        test_field = django_forcedfields.FixedCharField(
-            max_length=self._test_field_max_length)
+        test_field = django_forcedfields.FixedCharField(max_length=self._test_field_max_length)
         expected_return_value = 'char({!s})'.format(self._test_field_max_length)
 
         for alias in self._db_aliases:
             settings_dict = django.conf.settings.DATABASES[alias]
-            connection_mock = mock.NonCallableMock(
-                settings_dict=settings_dict)
+            connection_mock = mock.NonCallableMock(settings_dict=settings_dict)
             type_string = test_field.db_type(connection_mock)
 
             with self.subTest(backend=settings_dict['ENGINE']):
@@ -54,28 +50,24 @@ class TestFixedCharField(django.test.TestCase):
         """
         Test that max_length validation functions correctly.
 
-        Probably not strictly necessary but I want to ensure that the custom
-        field class method overrides don't affect standard operations.
+        Probably not strictly necessary but I want to ensure that the custom field class method
+        overrides don't affect standard operations.
 
         Note:
-            Validation covers actual model attribute values, not the field class
-            instance arguments. Checks cover the field class arguments and
-            configuration.
+            Validation covers actual model attribute values, not the field class instance arguments.
+            Checks cover the field class arguments and configuration.
 
         """
         test_model = test_models.FixedCharRecord(char_field_1='too many chars')
-        self.assertRaises(
-            django.core.exceptions.ValidationError,
-            test_model.full_clean)
+        self.assertRaises(django.core.exceptions.ValidationError, test_model.full_clean)
 
     def test_mysql_table_structure(self):
         """
         Test the creation of fixed char field in MySQL/MariaDB.
 
-        I attempted to use Django's database introspection classes but Django
-        wraps all the resulting data in arbitrary classes and named tuples while
-        omitting the raw field data type that I actually want. I finally opted
-        to use raw SQL.
+        I attempted to use Django's database introspection classes but Django wraps all the
+        resulting data in arbitrary classes and named tuples while omitting the raw field data type
+        that I actually want. I finally opted to use raw SQL.
 
         Example:
             connection = connections[alias]
@@ -87,10 +79,10 @@ class TestFixedCharField(django.test.TestCase):
             https://github.com/django/django/blob/master/django/db/backends/base/introspection.py
             https://github.com/django/django/blob/master/django/db/backends/mysql/introspection.py
 
-        In django.db.backends.base.creation.BaseDatabaseCreation.create_test_db,
-        the DATABASES alias NAME parameter is overwritten by the results of the
-        same object's _get_test_db_name() method. Therefore, we can get the
-        generated name of the test DB from the connection's settings_dict.
+        In django.db.backends.base.creation.BaseDatabaseCreation.create_test_db, the DATABASES alias
+        NAME parameter is overwritten by the results of the same object's _get_test_db_name()
+        method. Therefore, we can get the generated name of the test DB from the connection's
+        settings_dict.
 
         See:
             https://github.com/django/django/blob/master/django/db/backends/base/creation.py
@@ -110,7 +102,8 @@ class TestFixedCharField(django.test.TestCase):
         sql_params = [
             django.db.connections[test_utils.ALIAS_MYSQL].settings_dict['NAME'],
             self._test_table_name,
-            self._test_field_name]
+            self._test_field_name
+        ]
 
         with django.db.connections[test_utils.ALIAS_MYSQL].cursor() as cursor:
             cursor.execute(sql_string, sql_params)
@@ -123,10 +116,9 @@ class TestFixedCharField(django.test.TestCase):
         """
         Test the creation of fixed char field in PostgreSQL.
 
-        I attempted to use Django's database introspection classes but Django
-        wraps all the resulting data in arbitrary classes and named tuples while
-        omitting the raw field data type that I actually want. I finally opted
-        to use raw SQL.
+        I attempted to use Django's database introspection classes but Django wraps all the
+        resulting data in arbitrary classes and named tuples while omitting the raw field data type
+        that I actually want. I finally opted to use raw SQL.
 
         Example:
             connection = connections[alias]
@@ -138,10 +130,10 @@ class TestFixedCharField(django.test.TestCase):
             https://github.com/django/django/blob/master/django/db/backends/base/introspection.py
             https://github.com/django/django/blob/master/django/db/backends/mysql/introspection.py
 
-        In django.db.backends.base.creation.BaseDatabaseCreation.create_test_db,
-        the DATABASES alias NAME parameter is overwritten by the results of the
-        same object's _get_test_db_name() method. Therefore, we can get the
-        generated name of the test DB from the connection's settings_dict.
+        In django.db.backends.base.creation.BaseDatabaseCreation.create_test_db, the DATABASES alias
+        NAME parameter is overwritten by the results of the same object's _get_test_db_name()
+        method. Therefore, we can get the generated name of the test DB from the connection's
+        settings_dict.
 
         See:
             https://github.com/django/django/blob/master/django/db/backends/base/creation.py
@@ -159,13 +151,12 @@ class TestFixedCharField(django.test.TestCase):
                 AND column_name = %s
         """
         sql_params = [
-            django.db.connections[test_utils.ALIAS_POSTGRESQL]\
-                .settings_dict['NAME'],
+            django.db.connections[test_utils.ALIAS_POSTGRESQL].settings_dict['NAME'],
             self._test_table_name,
-            self._test_field_name]
+            self._test_field_name
+        ]
 
-        with django.db.connections[test_utils.ALIAS_POSTGRESQL].cursor() \
-            as cursor:
+        with django.db.connections[test_utils.ALIAS_POSTGRESQL].cursor() as cursor:
             cursor.execute(sql_string, sql_params)
             record = cursor.fetchone()
 
@@ -176,8 +167,8 @@ class TestFixedCharField(django.test.TestCase):
         """
         Test that data is correctly saved through the field class.
 
-        Probably not strictly necessary but I want to ensure that the custom
-        field class method overrides don't affect standard operations.
+        Probably not strictly necessary but I want to ensure that the custom field class method
+        overrides don't affect standard operations.
 
         """
         test_value = 'four'
@@ -187,6 +178,7 @@ class TestFixedCharField(django.test.TestCase):
 
             with self.subTest(backend=db_backend):
                 test_model.save(using=alias)
-                result_record = test_models.FixedCharRecord.objects\
-                    .using(alias).get(char_field_1=test_value)
+                result_record = test_models.FixedCharRecord.objects.using(alias).get(
+                    char_field_1=test_value
+                )
                 self.assertEqual(result_record.char_field_1, test_value)

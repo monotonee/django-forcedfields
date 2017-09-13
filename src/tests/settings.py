@@ -4,13 +4,11 @@ Django settings file only for use in testing.
 See:
     https://docs.djangoproject.com/en/dev/topics/testing/advanced/#using-the-django-test-runner-to-test-reusable-applications
 
-Originally, I attempted to leave the "default" DATABASES key empty and to
-define each database by a non-default, explicit config label. However,
-despite my use of database routers, the Django TestCase still produced an
-error when tearing down the test case when the "default" config was empty.
-The Django bug report below describes the error. For now, I'm just going to
-set "default" to point to the MySQL instance as I'm tired of fighting with
-Django over anything remotely unusual.
+Originally, I attempted to leave the "default" DATABASES key empty and to define each database by a
+non-default, explicit config label. However, despite my use of database routers, the Django TestCase
+still produced an error when tearing down the test case when the "default" config was empty. The
+Django bug report below describes the error. For now, I'm just going to set "default" to point to
+the MySQL instance as I'm tired of fighting with Django over anything remotely unusual.
 
 See:
     https://code.djangoproject.com/ticket/25504
