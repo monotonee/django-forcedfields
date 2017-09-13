@@ -102,7 +102,7 @@ TS_FIELD_TEST_ATTRNAME = 'ts_field_1'
 TS_FIELD_TEST_CONFIGS = [
     TimestampFieldTestConfig(
         {},
-        'TIMESTAMP DEFAULT 0',
+        'TIMESTAMP',
         'TIMESTAMP WITHOUT TIME ZONE',
         {
             django.db.models.NOT_PROVIDED: django.db.utils.IntegrityError,
@@ -112,7 +112,7 @@ TS_FIELD_TEST_CONFIGS = [
     ),
     TimestampFieldTestConfig(
         {'null': True},
-        'TIMESTAMP DEFAULT NULL',
+        'TIMESTAMP',
         'TIMESTAMP WITHOUT TIME ZONE',
         {
             django.db.models.NOT_PROVIDED: None,
@@ -202,8 +202,7 @@ TS_FIELD_TEST_CONFIGS = [
     ),
     TimestampFieldTestConfig(
         {'auto_now_update': True, 'default': _DEFAULT_DATETIME},
-        'TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR \
-            + '\' ON UPDATE CURRENT_TIMESTAMP',
+        'TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\' ON UPDATE CURRENT_TIMESTAMP',
         'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
         {
             django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
@@ -213,8 +212,7 @@ TS_FIELD_TEST_CONFIGS = [
     ),
     TimestampFieldTestConfig(
         {'auto_now_update': True, 'default': _DEFAULT_DATETIME, 'null': True},
-        'TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR \
-            + '\' ON UPDATE CURRENT_TIMESTAMP',
+        'TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\' ON UPDATE CURRENT_TIMESTAMP',
         'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
         {
             django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,

@@ -188,6 +188,14 @@ class TimestampField(django.db.models.DateTimeField):
         non-standard TIMESTAMP handling. This non-standard TIMESTAMP DEFAULT is deprecated so this
         is a superior option.
 
+        DEFAULT must be specified in order to be compatible with MySQL server system variable
+        explicit_defaults_for_timestamp. If TRUE, DEFAULT must be explicitly defined for the
+        TIMESTAMP field. If FALSE, DEFAULT CURRENT_TIMESTAMP will be implicitly defined if no
+        explicit default is provided. All other behavior is not the concern of this field class and
+        is instead left to the database engine. MySQL strict mode, NO_ZERO_DATE, NO_ZERO_IN_DATE,
+        and explicit_defaults_for_timestamp all affect what values and defaults are valid for the
+        end user's specific field class instance.
+
         See:
             https://dev.mysql.com/doc/refman/en/timestamp-initialization.html
             https://dev.mysql.com/doc/refman/en/server-system-variables.html#sysvar_explicit_defaults_for_timestamp
@@ -215,13 +223,6 @@ class TimestampField(django.db.models.DateTimeField):
             # Mutual exclusivity between auto_now and auto_now_update has already been ensured by
             # this point.
             type_spec.append(ts_default_on_update)
-
-        if len(type_spec) == 1:
-            # Disable default TIMESTAMP DEFAULT and ON UPDATE if no special kwargs passed.
-            if self.null:
-                type_spec.append('DEFAULT NULL')
-            else:
-                type_spec.append('DEFAULT 0')
 
         return ' '.join(type_spec)
 
