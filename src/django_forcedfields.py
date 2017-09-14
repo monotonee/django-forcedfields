@@ -11,7 +11,9 @@ data FROM the database and ending with returning data TO the database:
 
     1. from_db_value
     2. to_python
+        - "Convert the input value into the expected Python data type"
     3. pre_save
+        - "Return field's value just before saving."
         - See source for django.db.models.sql.SQLCompiler.pre_save_val()
     4. get_prep_value
         - "Perform preliminary non-db specific value checks and conversions."
@@ -176,7 +178,7 @@ class TimestampField(django.db.models.DateTimeField):
 
         return failed_checks
 
-    def _db_type_mysql(self):
+    def _db_type_mysql(self, connection):
         """
         Assemble the db_type string for the MySQL backend.
 
@@ -201,6 +203,21 @@ class TimestampField(django.db.models.DateTimeField):
             https://dev.mysql.com/doc/refman/en/server-system-variables.html#sysvar_explicit_defaults_for_timestamp
             https://jira.mariadb.org/browse/MDEV-10802
 
+        I'm concerned about outputting the DEFAULT clause here. The Django schema editor mechanism
+        already seems to provide a way to output DEFAULT although it doesn't appear to be used in
+        core and it appears narrow in scope. Default values are (sigh) usually applied in the
+        application layer in a model's __init__ method if no field value was explicitly defined in
+        model's initial kwargs.
+
+        See:
+            https://github.com/django/django/blob/master/django/db/models/base.py
+            https://github.com/django/django/blob/master/django/db/backends/base/schema.py
+                django.db.backends.base.BaseDatabaseSchemaEditor.column_sql
+                django.db.backends.base.BaseDatabaseSchemaEditor.create_model
+
+        Args:
+            connection: The Django connection object that was passed to the db_type() override.
+
         Returns:
             string: The db_type field definition string.
 
@@ -216,7 +233,8 @@ class TimestampField(django.db.models.DateTimeField):
             type_spec.append(ts_default_default)
         elif self.has_default():
             # Set specified default on creation, no ON UPDATE action.
-            type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
+            default_value = self._get_prep_default_value(self.get_default(), connection)
+            type_spec.append('DEFAULT {!s}'.format(default_value))
 
         if self.auto_now_update:
             # CURRENT_TIMESTAMP on update only.
@@ -226,12 +244,15 @@ class TimestampField(django.db.models.DateTimeField):
 
         return ' '.join(type_spec)
 
-    def _db_type_postgresql(self):
+    def _db_type_postgresql(self, connection):
         """
         Assemble the db_type string for the PostgreSQL backend.
 
         PostgreSQL has no auto_now_update/ON UPDATE clause equivalent. Values on update are handled
         manually in the ORM layer. See pre_save().
+
+        Args:
+            connection: The Django connection object that was passed to the db_type() override.
 
         Returns:
             string: The db_type field definition string.
@@ -243,17 +264,21 @@ class TimestampField(django.db.models.DateTimeField):
             type_spec.append('DEFAULT CURRENT_TIMESTAMP')
         elif self.has_default():
             # Set specified default on creation, no ON UPDATE action.
-            # PostgreSQL uses double quotes only for system identifiers.
-            type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
+            # Warning: PostgreSQL uses double quotes only for system identifiers.
+            default_value = self._get_prep_default_value(self.get_default(), connection)
+            type_spec.append('DEFAULT {!s}'.format(default_value))
 
         return ' '.join(type_spec)
 
-    def _db_type_sqlite(self):
+    def _db_type_sqlite(self, connection):
         """
         Assemble the db_type string for the sqlite3 backend.
 
         SQLite has no auto_now_update/ON UPDATE clause equivalent. Values on update are handled
         manually in the ORM layer. See pre_save().
+
+        Args:
+            connection: The Django connection object that was passed to the db_type() override.
 
         Returns:
             string: The db_type field definition string.
@@ -263,9 +288,69 @@ class TimestampField(django.db.models.DateTimeField):
         if self.auto_now or self.auto_now_add:
             type_spec.append('DEFAULT CURRENT_TIMESTAMP')
         elif self.has_default():
-            type_spec.append("DEFAULT '" + str(self.get_default()) + "'")
+            default_value = self._get_prep_default_value(self.get_default(), connection)
+            type_spec.append('DEFAULT {!s}'.format(default_value))
 
         return ' '.join(type_spec)
+
+    def _get_prep_default_value(self, value, connection):
+        """
+        Generate a SQL DEFAULT clause value for use in a column DDL statement.
+
+        This is not intended to be usable by any model field class. Rather, it is only designed to
+        handle the use case of TIMESTAMP field types. None values will be converted to NULL and all
+        other values will be passed to the parent's get_prep_value() where a valid datetime value
+        will attempt to be parsed out.
+
+        Default values in Django's ORM are (sigh) usually applied in the application layer in a
+        model's __init__ method if no field value was explicitly defined in model's initial kwargs.
+        This method is responsible for creating a valid default value to be issued to a DB engine
+        in the column's DDL SQL. There is currently no need to differentiate DEFAULT values by DB
+        engine.
+
+        See:
+            https://docs.djangoproject.com/en/dev/ref/models/fields/#default
+
+        Note that the parent DateTimeField/DateField can raise validation errors in the model.save()
+        call without having called full_clean(). ValidationErrors are raised in
+        DateTimeField.to_python which is called by DateTimeField.get_prep_value (on save) and by
+        the model's clean methods (full_clean(), etc.). Apparently, to_python() is the "first step
+        in every validation." I do somewhat question the choice of placing datetime value validation
+        in DateTimeField.to_python().
+
+        See:
+            https://docs.djangoproject.com/en/dev/ref/forms/validation/
+            https://docs.djangoproject.com/en/dev/ref/models/instances/#validating-objects
+            https://github.com/django/django/blob/master/django/utils/dateparse.py
+            https://github.com/django/django/blob/master/django/db/models/fields/__init__.py
+                django.db.models.fields.DateTimeField.get_prep_value()
+
+        Args:
+            value: The desired value of the field class' "default" kwarg and instance attribute.
+            connection: The Django connection object that was passed to db_type().
+
+        Returns:
+            str: A valid SQL DEFAULT clause usable in a column's DDL statement.
+
+        Raises:
+            TypeError: If the passed default value cannot be converted into a valid DDL value.
+
+        """
+        default_value_prepared = value
+
+        if value is None:
+            default_value_prepared = 'NULL'
+        else:
+            # Will raise ValidationError for invalid datetime values.
+            # Underlying django.utils.dateparse.parse_date() expects and requires a string.
+            default_value_prepared = super().get_db_prep_value(
+                str(value),
+                connection,
+                prepared=False
+            )
+            default_value_prepared = "'{!s}'".format(default_value_prepared)
+
+        return default_value_prepared
 
     def db_type(self, connection):
         """
@@ -292,11 +377,11 @@ class TimestampField(django.db.models.DateTimeField):
         """
         engine = connection.settings_dict['ENGINE']
         if engine == 'django.db.backends.mysql':
-            db_type = self._db_type_mysql()
+            db_type = self._db_type_mysql(connection)
         elif engine == 'django.db.backends.postgresql':
-            db_type = self._db_type_postgresql()
+            db_type = self._db_type_postgresql(connection)
         elif engine == 'django.db.backends.sqlite3':
-            db_type = self._db_type_sqlite()
+            db_type = self._db_type_sqlite(connection)
         else:
             db_type = super().db_type(connection)
 
