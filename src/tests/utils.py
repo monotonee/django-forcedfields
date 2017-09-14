@@ -13,6 +13,7 @@ suffix is empty, resulting in "test_".
 
 import datetime
 import inspect
+import re
 import sys
 
 import django.db.models
@@ -77,17 +78,20 @@ class TimestampFieldTestConfig:
 
     """
 
-    def __init__(self, kwargs_dict, db_type_mysql, db_type_postgresql, insert_values_dict):
+    def __init__(self, *, kwargs_dict, db_type_mysql, db_type_postgresql, insert_values_dict):
         """
         Args:
             kwargs_dict (dict): A dictionary of the k/v pairs to be passed as keyword arguments to
                 the custom field constructor.
-            db_type_mysql (string): The expected output of db_type() for the MySQL backend.
-            db_type_postgresql (string): The expected output of db_type() for the PostgreSQL
+            db_type_mysql (str): The expected output of db_type() for the MySQL backend.
+            db_type_postgresql (str): The expected output of db_type() for the PostgreSQL
                 backend.
             insert_values_dict (dict): A dictionary of test input values (keys) and the resulting
-                values that are expected to be stored in the database (values) upon new record
+                values that are expected to be retrieved from the database (values) after new record
                 insert.
+
+        See:
+            https://www.python.org/dev/peps/pep-3102/
 
         """
         self.kwargs_dict = kwargs_dict
@@ -101,141 +105,151 @@ _DEFAULT_DATETIME_STR = str(_DEFAULT_DATETIME)
 TS_FIELD_TEST_ATTRNAME = 'ts_field_1'
 TS_FIELD_TEST_CONFIGS = [
     TimestampFieldTestConfig(
-        {},
-        'TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE',
-        {
+        kwargs_dict={},
+        db_type_mysql='TIMESTAMP',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE',
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: django.db.utils.IntegrityError,
             None: django.db.utils.IntegrityError,
             _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }
     ),
     TimestampFieldTestConfig(
-        {'null': True},
-        'TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE',
-        {
+        kwargs_dict={'null': True},
+        db_type_mysql='TIMESTAMP',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE',
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: None,
             None: None,
             _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }
     ),
     TimestampFieldTestConfig(
-        {'auto_now': True},
-        'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
-        {
+        kwargs_dict={'auto_now': True},
+        db_type_mysql='TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
             _DEFAULT_DATETIME: datetime.datetime
         }
     ),
     TimestampFieldTestConfig(
-        {'auto_now': True, 'null': True},
-        'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
-        {
+        kwargs_dict={'auto_now': True, 'null': True},
+        db_type_mysql='TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
             _DEFAULT_DATETIME: datetime.datetime
         }
     ),
     TimestampFieldTestConfig(
-        {'auto_now_add': True},
-        'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
-        {
+        kwargs_dict={'auto_now_add': True},
+        db_type_mysql='TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
             _DEFAULT_DATETIME: datetime.datetime
         }
     ),
     TimestampFieldTestConfig(
-        {'auto_now_add': True, 'auto_now_update': True},
-        'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
-        {
+        kwargs_dict={'auto_now_add': True, 'auto_now_update': True},
+        db_type_mysql='TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
             _DEFAULT_DATETIME: datetime.datetime
         }
     ),
     TimestampFieldTestConfig(
-        {'auto_now_add': True, 'auto_now_update': True, 'null': True},
-        'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
-        {
+        kwargs_dict={'auto_now_add': True, 'auto_now_update': True, 'null': True},
+        db_type_mysql='TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
             _DEFAULT_DATETIME: datetime.datetime
         }
     ),
     TimestampFieldTestConfig(
-        {'auto_now_add': True, 'null': True},
-        'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
-        {
+        kwargs_dict={'auto_now_add': True, 'null': True},
+        db_type_mysql='TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
             _DEFAULT_DATETIME: datetime.datetime
         }
     ),
     TimestampFieldTestConfig(
-        {'auto_now_update': True},
-        'TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE',
-        {
+        kwargs_dict={'auto_now_update': True},
+        db_type_mysql='TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE',
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: django.db.utils.IntegrityError,
             None: django.db.utils.IntegrityError,
             _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }
     ),
     TimestampFieldTestConfig(
-        {'auto_now_update': True, 'null': True},
-        'TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE',
-        {
+        kwargs_dict={'auto_now_update': True, 'null': True},
+        db_type_mysql='TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE',
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: None,
             None: None,
             _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }
     ),
     TimestampFieldTestConfig(
-        {'auto_now_update': True, 'default': _DEFAULT_DATETIME},
-        'TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\' ON UPDATE CURRENT_TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
-        {
+        kwargs_dict={'auto_now_update': True, 'default': _DEFAULT_DATETIME},
+        db_type_mysql='TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\' ON UPDATE CURRENT_TIMESTAMP',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
             None: django.db.utils.IntegrityError,
             _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }
     ),
     TimestampFieldTestConfig(
-        {'auto_now_update': True, 'default': _DEFAULT_DATETIME, 'null': True},
-        'TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\' ON UPDATE CURRENT_TIMESTAMP',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
-        {
+        kwargs_dict={'auto_now_update': True, 'default': _DEFAULT_DATETIME, 'null': True},
+        db_type_mysql='TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\' ON UPDATE CURRENT_TIMESTAMP',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
             None: None,
             _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }
     ),
     TimestampFieldTestConfig(
-        {'default': _DEFAULT_DATETIME},
-        'TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\'',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
-        {
+        kwargs_dict={'default': _DEFAULT_DATETIME},
+        db_type_mysql='TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\'',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
             None: django.db.utils.IntegrityError,
             _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }
     ),
     TimestampFieldTestConfig(
-        {'default': _DEFAULT_DATETIME, 'null': True},
-        'TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\'',
-        'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
-        {
+        kwargs_dict={'default': _DEFAULT_DATETIME, 'null': True},
+        db_type_mysql='TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\'',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
+        insert_values_dict={
             django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
+            None: None,
+            _DEFAULT_DATETIME: _DEFAULT_DATETIME
+        }
+    ),
+    TimestampFieldTestConfig(
+        kwargs_dict={'default': None, 'null': True},
+        db_type_mysql='TIMESTAMP DEFAULT NULL',
+        db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL',
+        insert_values_dict={
+            django.db.models.NOT_PROVIDED: None,
             None: None,
             _DEFAULT_DATETIME: _DEFAULT_DATETIME
         }
@@ -248,21 +262,30 @@ def get_ts_model_class_name(**kwargs):
     """
     Create a string for use as a dynamic class name.
 
-    When testing all permutations of field keyword arguments in model classes,
-    this function is used with the built-in function type() to dynamically
-    generate the new model class' unique name.
+    When testing all permutations of field keyword arguments in model classes, this function is used
+    with the built-in function type() to dynamically generate the new model class' unique name.
+    Subsequently, this function is called by the test suites to detrministically return a specific
+    model class name based on desired field class configuration (kwargs). See sample usage of this
+    function in the tests.models module.
 
-    See sample usage of this function in the tests.models module.
+    This algorithm is somewhat brittle. Not sure I like it.
 
     Args:
-        kwargs: The keyword args that will be passed to the field in the test
-            model class.
+        kwargs: The keyword args that would be passed to the field in the test model class.
 
     See:
         https://docs.python.org/3/library/functions.html#type
 
     """
-    suffix = ''.join([key.replace('_', '').title() for key in kwargs.keys()])
+    kwargs_strings = []
+    for key, value in kwargs.items():
+        key_string = str(key).replace('_', '').title()
+        if isinstance(value, datetime.datetime):
+            value_string = 'Datetime'
+        else:
+            value_string =  re.sub(r'[\s:\-\.]', '', str(value)).title()
+        kwargs_strings.append(key_string + value_string)
+    suffix = ''.join(kwargs_strings)
     return 'TsRecord' + suffix
 
 
