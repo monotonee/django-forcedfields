@@ -409,7 +409,8 @@ class TestTimestampField(django.test.TransactionTestCase):
 
         """
         test_model_class_name = test_utils.get_ts_model_class_name(
-            **test_utils.TS_FIELD_TEST_CONFIGS[2].kwargs_dict)
+            **test_utils.TS_FIELD_TEST_CONFIGS[2].kwargs_dict
+        )
         test_model_class = getattr(test_models, test_model_class_name)
         connection = django.db.connections[test_utils.ALIAS_POSTGRESQL]
 
