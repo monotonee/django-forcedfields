@@ -1,4 +1,4 @@
-.PHONY: build mariadb_cli postgresql_cli tests
+.PHONY: build lint mariadb_cli postgresql_cli tests unit_tests
 
 build:
 	cd src && \
@@ -11,7 +11,10 @@ mariadb_cli:
 postgres_cli:
 	docker-compose exec postgresql psql -U tester
 
-tests:
-	python src/runtests.py
+lint:
 	pylint --rcfile=.pylintrc src/django_forcedfields.py
 
+unit_tests:
+	python src/runtests.py
+
+tests: unit_tests lint
