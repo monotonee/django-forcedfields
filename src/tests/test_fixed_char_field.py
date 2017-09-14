@@ -36,7 +36,7 @@ class TestFixedCharField(django.test.TestCase):
 
         """
         test_field = django_forcedfields.FixedCharField(max_length=self._test_field_max_length)
-        expected_return_value = 'char({!s})'.format(self._test_field_max_length)
+        expected_return_value = 'CHAR({!s})'.format(self._test_field_max_length)
 
         for alias in self._db_aliases:
             settings_dict = django.conf.settings.DATABASES[alias]

@@ -66,7 +66,7 @@ class FixedCharField(django.db.models.CharField):
             https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.db_type
 
         """
-        return 'char({!s})'.format(self.max_length)
+        return 'CHAR({!s})'.format(self.max_length)
 
 
 class TimestampField(django.db.models.DateTimeField):
