@@ -154,8 +154,82 @@ the return value is always quoted in the final, compiled SQL, causing some
 databases to emit errors. I finally conceded (temporary) defeat and reverted to
 application-generated timestamp values.
 
+******************************
+Database Engine Considerations
+******************************
+
+When using TimestampField, one must be aware of certain database engine behavior defaults and
+configurations. An ORM is usually designed to abstract, as much as is practical and prudent, the
+differences between the underlying databases. In this case, however, the abstraction leaks. Consider
+the following timestamp column DDL::
+
+    TIMESTAMP NOT NULL
+
+Note the lack of a ``DEFAULT`` clause. One would expect, upon attempting to insert a ``NULL`` value
+or failing to provide a value for the columns altogether, that some sort of constraint or integrity
+exception would be raised. Indeed, this behavior adheres to the principle of least astonishment and
+is the standard behavior of both SQLite and PostgreSQL. Both `SQLite
+<https://www.sqlite.org/lang_createtable.html>`_ and `PostgreSQL
+<https://www.postgresql.org/docs/current/static/ddl-default.html>`_ implicitly assign
+``DEFAULT NULL`` to column definitions with no explicit ``DEFAULT`` clause.
+
+MySQL requires a specific configuration to achieve the same standard behavior. The following
+configuration options affect ``TIMESTAMP`` columns:
+
+- `strict mode <https://dev.mysql.com/doc/refman/en/sql-mode.html#sql-mode-strict>`_
+- `NO_ZERO_DATE <https://dev.mysql.com/doc/refman/en/sql-mode.html#sqlmode_no_zero_date>`_
+- `NO_ZERO_IN_DATE <https://dev.mysql.com/doc/refman/en/sql-mode.html#sqlmode_no_zero_in_date>`_
+- `explicit_defaults_for_timestamp <https://dev.mysql.com/doc/refman/en/server-system-variables.html#sysvar_explicit_defaults_for_timestamp>`_
+
+At minimum, MySQL requires that both strict mode and ``explicit_defaults_for_timestamp`` are
+enabled for ``TIMESTAMP`` behavior to conform to standards. If one attempts to omit a value for the
+``TIMESTAMP NOT NULL`` column, a "ERROR 1364 (HY000): Field <field_name> doesn't have a default
+value" is emitted and if one attempts to insert a ``NULL`` value, a "ERROR 1048 (23000): Column
+<field_name> cannot be null" is emitted. As of version MySQL 5.7, strict mode is enabled by default
+but ``explicit_defaults_for_timestamp`` is not.
+
+MariaDB, on the other hand, applies the same configuration parameters in a different way and its
+logic as it relates to ``TIMESTAMP NOT NULL`` is less clear and, dare I say, erroneous. Assuming
+identical configuration (strict mode and ``explicit_defaults_for_timestamp`` enabled), MariaDB
+raises "ERROR 1364 (HY000): Field <field_name> doesn't have a default value" on insert value
+omission but successfully accepts a ``NULL`` value with no error and stores the results of
+``CURRENT_TIMESTAMP()`` in the field instead.
+
+In an attempt to bring MariaDB in line with the standard, I also tested ``NO_ZERO_DATE`` and
+``NO_ZERO_IN_DATE``. As long as both ``explicit_defaults_for_timestamp`` and ``NO_ZERO_DATE`` or
+``NO_ZERO_IN_DATE`` are enabled, it is impossible to create a table containing the
+``TIMESTAMP NOT NULL`` column as the ``CREATE TABLE`` statement fails with "ERROR 1067 (42000):
+Invalid default value for <field_name>". This suggests that not only is the ``DEFAULT`` value
+validated during DDL statements, but MariaDB is also attempting to implicitly insert a zero value
+timestamp into the ``TIMESTAMP`` field. Taken from the `MySQL documentation
+<https://dev.mysql.com/doc/refman/en/datetime.html>`_:
+
+    Invalid DATE, DATETIME, or TIMESTAMP values are converted to the “zero” value of the appropriate
+    type ('0000-00-00' or '0000-00-00 00:00:00').
+
+In conclusion, it is impossible for MariaDB's ``TIMESTAMP`` fields to behave in a standard way when
+dealing with ``TIMESTAMP NOT NULL`` columns. I found `this bug report
+<https://jira.mariadb.org/browse/MDEV-10802>`_ for MariaDB but it appears that the work has ceased
+and the fix has not been merged into the target release. All tests were performed on MariaDB 10.2
+and 10.3.
+
+I now have a choice to make: do I cause TimestampField to step aside and let the user more directly
+experience the effects of the underlying database engine's configuration or do I attempt to abstract
+the behavior differences as much as possible? Given the spirit and goal of this library, I have
+opted for less abstraction and have removed any additional, artificial normalization of database
+engine behavior in these field classes. I am certainly open to discussion on this point so please
+don't hesitate to open communication with me or point out any errors in my testing.
+
+Given MariaDB's deviation from standards, this package's unit tests are performed using MySQL and
+testing on MariaDB is disabled until further notice.
+
+As an aside, please note that many inconsistent behaviors between database engines can be mitigated
+or even eliminated by explicitly defining field keyword arguments such as ``default``, ``null``,
+etc., causing more explicit DDL SQL to be generated by Django in the resulting migrations and SQL.
+
+***********
 Development
-===========
+***********
 
 To set up the development environment, a Vagrantfile is included. Install
 `Vagrant <https://www.vagrantup.com/>`_ and::
@@ -191,8 +265,9 @@ with some of the styles. A few notes on pylint:
       argument to bind the method call to the current instance.
     * `super() <https://docs.python.org/3/library/functions.html#super>`_
 
+**************
 Oracle Support
-==============
+**************
 
 The FixedCharField should work on Oracle but the TimestampField will default to
 DateTimeField database field data types when used with Oracle. I did not test

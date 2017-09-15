@@ -400,36 +400,6 @@ class TimestampField(django.db.models.DateTimeField):
             kwargs['auto_now_update'] = True
         return (name, path, args, kwargs)
 
-    def get_db_prep_save(self, value, connection):
-        """
-        MySQL, in typical fashion, presents an exception to the rule. When a TIMESTAMP field with no
-        DEFAULT (including DEFAULT CURRENT_TIMESTAMP) and that is NOT NULL receives a NULL value on
-        record INSERT or UPDATE, it is simply given the default value of zero which results in the
-        timestamp 0000-00-00 00:00:00. Thankfully, this is affected by SQL_MODE NO_ZERO_DATE and
-        NO_ZERO_IN_DATE. Note that the latest versions of MySQL include NO_ZERO_DATE and
-        NO_ZERO_IN_DATE in strict mode (ex: STRICT_TRANS_TABLES).
-
-        The other database engines PostgreSQL and sqlite3 rightfully raise exceptions in the
-        aforementioned condition, citing integrity or constraint violations.
-
-        This method override attempts to normalize MySQL's anomalous behavior in these situations by
-        explicitly raising the same exception as the other Django backends. The exception message
-        was copied from that of the other backends but I may need to be write a more specific one.
-
-        See:
-            https://dev.mysql.com/doc/refman/en/timestamp-initialization.html
-
-        """
-        add = self._get_prep_value_add
-        self._get_prep_value_add = None
-
-        engine = connection.settings_dict['ENGINE']
-
-        if engine == 'django.db.backends.mysql' and add and not self.null and value is None:
-            raise django.db.utils.IntegrityError('NOT NULL constraint failed.')
-
-        return super().get_db_prep_save(value, connection)
-
     def pre_save(self, model_instance, add):
         """
         Add auto_now_update to parent class' pre_save() implementation.

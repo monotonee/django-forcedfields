@@ -26,6 +26,13 @@ DATABASES = {
         'PORT': '3306',
         'USER': 'tester',
     },
+    # 'mariadb': {
+        # 'ENGINE': 'django.db.backends.mysql',
+        # 'HOST': '127.0.0.1',
+        # 'PASSWORD': 'tester',
+        # 'PORT': '3307',
+        # 'USER': 'tester',
+    # },
     'postgresql': {
         'ENGINE': 'django.db.backends.postgresql',
         'HOST': '127.0.0.1',

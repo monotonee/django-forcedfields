@@ -1,8 +1,11 @@
-# MariaDB-specific config file.
+# MySQL-specific config file.
 # Read by /etc/mysql/my.cnf
 
 [client]
+#
 # Default is Latin1, if you need UTF-8 set this (also in server section)
+# https://dev.mysql.com/doc/refman/en/charset-connection.html
+#
 default-character-set = utf8
 
 [mysqld]
@@ -10,6 +13,7 @@ default-character-set = utf8
 # * Character sets
 #
 # Default is Latin1, if you need UTF-8 set all this (also in client section)
+# https://dev.mysql.com/doc/refman/en/sql-mode.html
 #
 character-set-server = utf8
 collation-server = utf8_unicode_ci
