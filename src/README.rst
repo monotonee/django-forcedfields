@@ -173,6 +173,9 @@ is the standard behavior of both SQLite and PostgreSQL. Both `SQLite
 <https://www.postgresql.org/docs/current/static/ddl-default.html>`_ implicitly assign
 ``DEFAULT NULL`` to column definitions with no explicit ``DEFAULT`` clause.
 
+MySQL
+=====
+
 MySQL requires a specific configuration to achieve the same standard behavior. The following
 configuration options affect ``TIMESTAMP`` columns:
 
@@ -188,6 +191,9 @@ value" is emitted and if one attempts to insert a ``NULL`` value, a "ERROR 1048 
 <field_name> cannot be null" is emitted. As of version MySQL 5.7, strict mode is enabled by default
 but ``explicit_defaults_for_timestamp`` is not.
 
+MariaDB
+=======
+
 MariaDB, on the other hand, applies the same configuration parameters in a different way and its
 logic as it relates to ``TIMESTAMP NOT NULL`` is less clear and, dare I say, erroneous. Assuming
 identical configuration (strict mode and ``explicit_defaults_for_timestamp`` enabled), MariaDB
@@ -200,18 +206,33 @@ In an attempt to bring MariaDB in line with the standard, I also tested ``NO_ZER
 ``NO_ZERO_IN_DATE`` are enabled, it is impossible to create a table containing the
 ``TIMESTAMP NOT NULL`` column as the ``CREATE TABLE`` statement fails with "ERROR 1067 (42000):
 Invalid default value for <field_name>". This suggests that not only is the ``DEFAULT`` value
-validated during DDL statements, but MariaDB is also attempting to implicitly insert a zero value
-timestamp into the ``TIMESTAMP`` field. Taken from the `MySQL documentation
-<https://dev.mysql.com/doc/refman/en/datetime.html>`_:
+validated during DDL statements, but MariaDB is also attempting to implicitly define a zero value
+``DEFAULT`` value on the ``TIMESTAMP`` field as the same error is raised when
+``DEFAULT '0000-00-00 00:00:00'`` is explicitly defined. This is nonstandard, erroneous behavior and
+conflicts with that of MySQL. From the `MySQL documentation
+<https://dev.mysql.com/doc/refman/en/server-system-variables.html#sysvar_explicit_defaults_for_timestamp>`_:
 
-    Invalid DATE, DATETIME, or TIMESTAMP values are converted to the “zero” value of the appropriate
-    type ('0000-00-00' or '0000-00-00 00:00:00').
+    ``TIMESTAMP`` columns explicitly declared with the ``NOT NULL`` attribute and without an
+    explicit ``DEFAULT`` attribute are treated as having no default value.
 
-In conclusion, it is impossible for MariaDB's ``TIMESTAMP`` fields to behave in a standard way when
-dealing with ``TIMESTAMP NOT NULL`` columns. I found `this bug report
+From the same documentation page, the following governs ``INSERT`` operations under these
+conditions:
+
+    For inserted rows that specify no explicit value for such a column, the result depends on the
+    SQL mode. If strict SQL mode is enabled, an error occurs. If strict SQL mode is not enabled, the
+    column is declared with the implicit default of '0000-00-00 00:00:00' and a warning occurs. This
+    is similar to how MySQL treats other temporal types such as DATETIME.
+
+The DDL validation failure may have something to do with these ``INSERT`` rules.
+
+It is impossible for MariaDB's ``TIMESTAMP`` fields to behave in a standard way when dealing with
+``TIMESTAMP NOT NULL`` columns. I found `this bug report
 <https://jira.mariadb.org/browse/MDEV-10802>`_ for MariaDB but it appears that the work has ceased
 and the fix has not been merged into the target release. All tests were performed on MariaDB 10.2
 and 10.3.
+
+Conclusion
+==========
 
 I now have a choice to make: do I cause TimestampField to step aside and let the user more directly
 experience the effects of the underlying database engine's configuration or do I attempt to abstract
