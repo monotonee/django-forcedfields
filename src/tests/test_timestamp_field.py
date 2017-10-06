@@ -179,8 +179,8 @@ class TestTimestampField(django.test.TransactionTestCase):
         This is part of a test of the UPDATE operations with the timestamp field.
 
         Args:
-            alias (string): The DATABASES Django settings key used to specify a
-                specific database backend for an operation.
+            alias (string): The DATABASES Django settings key used to specify a specific database
+                backend for an operation.
 
         """
         # Insert a record and retrieve fresh value from database.
@@ -318,7 +318,8 @@ class TestTimestampField(django.test.TransactionTestCase):
 
         Just testing to make sure that any custom field modifications haven't disrupted the parent
         DateTimeField's functionality. DateTimeField raises a ValidationError if datetime value
-        cannot be parsed.
+        cannot be parsed. The DateTimeField attempts to parse date and time from string in its
+        to_python() method, raising ValidationError on failure.
 
         Note:
             "Validation" covers actual model attribute values, not the field class instance
