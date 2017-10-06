@@ -1,4 +1,4 @@
-.PHONY: build lint mariadb_cli mysql_cli postgresql_cli tests unit_tests
+.PHONY: build lint mariadb_cli mysql_cli postgresql_cli tests unit_tests tests
 
 build:
 	cd src && \
