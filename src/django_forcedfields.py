@@ -5,9 +5,10 @@ Databases should be as self-documenting and semantic as possible, independent of
 code, ORM models, or documentation. I will not compromise this principle for the sake of an ORM's
 conveniences.
 
-Django's documentation concerning the creation of custom model fields is cursory and unclear. As I
-understand it, the following is the flow of Field API method calls in order starting with fetching
-data FROM the database and ending with returning data TO the database:
+Django's documentation concerning the creation of custom model fields is cursory and unclear and the
+method names are needlessly vague. As I understand it, the following is the flow of Field API method
+calls in order starting with fetching data FROM the database and ending with returning data TO the
+database:
 
     1. from_db_value
     2. to_python
@@ -22,6 +23,7 @@ data FROM the database and ending with returning data TO the database:
         - "Return field's value prepared for interacting with the database backend."
         - Seems to be used internally. Doesn't seem to be called by SQL compiler.
         - Called by base Field class' get_db_prep_save().
+        - Called in django.db.models.sql.compiler.SQLInsertCompiler.prepare_value()
     6. get_db_prep_save
         - "Return field's value prepared for saving into a database."
         - Called by SQL compiler. See source for django.db.models.sql.SQLCompiler.prepare_value().
@@ -404,6 +406,9 @@ class TimestampField(django.db.models.DateTimeField):
         """
         Add auto_now_update to parent class' pre_save() implementation.
 
+        The SQL compiler (django.db.models.sql.compiler.SQLInsertCompiler) call this method on
+        fields to get the value to be inserted in the SQL insert VALUES list.
+
         I would like to implement this so that if an explcitly-assigned value exists on the model
         attribute, it will disable automatic setting of the datetime. This may be a future feature.
         On the other hand, that behavior can be largely emulated by setting "default" kwarg to a
@@ -434,16 +439,13 @@ class TimestampField(django.db.models.DateTimeField):
         """
         self._get_prep_value_add = add
 
-        # pylint doesn't like this conditional indent style but it is consistent
-        # with Google style and I like it. Leave it alone.
-        # https://google.github.io/styleguide/pyguide.html?showone=Line_length#Line_length
         if self.auto_now or (self.auto_now_update and not add) or (self.auto_now_add and add):
             value = datetime.datetime.today()
             setattr(model_instance, self.attname, value)
         else:
             # This super() call is correct. Leave it alone.
-            # Skips DateTimeField and DateField pre_save() overrides while
-            # maintaining binding to current class instance.
+            # Skips DateTimeField and DateField pre_save() overrides while maintaining binding to
+            # current class instance.
             # See: https://docs.python.org/3/library/functions.html#super
             value = super(django.db.models.DateField, self).pre_save(model_instance, add)
 
