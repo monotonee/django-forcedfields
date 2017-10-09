@@ -41,8 +41,6 @@ See:
 
 """
 
-import datetime
-
 import django.core.checks
 import django.db.models
 import django.db.models.functions
@@ -444,6 +442,6 @@ class TimestampField(django.db.models.DateTimeField):
             # Skips DateTimeField and DateField pre_save() overrides while maintaining binding to
             # current class instance.
             # See: https://docs.python.org/3/library/functions.html#super
-            value = super(django.db.models.DateField, self).pre_save(model_instance, add)
+            value = super(django.db.models.DateField, self).pre_save(model_instance, add) # pylint: disable=bad-super-call
 
         return value
