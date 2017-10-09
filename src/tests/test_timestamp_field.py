@@ -38,13 +38,45 @@ class TestTimestampField(django.test.TransactionTestCase):
 
     multi_db = True
 
-    @classmethod
-    def setUpTestData(cls):
+    def _assertDatetimeEqual(self, datetime_1, datetime_2):
         """
-        Override parent method. Single setup for data used in majority of cases.
+        Assert two datetime.datetime values are equal.
+
+        This method does NOT compare any division of time smaller than a minute, i.e. seconds and
+        milliseconds, if present, are not considered in equality.
+
+        Args:
+            datetime_1 (datetime.datetime): The first (left) value to compare.
+            datetime_2 (datetime.datetime): The second (right) value to compare.
 
         """
-        cls._db_aliases = test_utils.get_db_aliases()
+        self.assertEqual(datetime_1.date(), datetime_2.date())
+        self.assertEqual(datetime_1.hour, datetime_2.hour)
+        self.assertEqual(datetime_1.minute, datetime_2.minute)
+
+    def _assertDatetimeNotEqual(self, datetime_1, datetime_2):
+        """
+        Assert two datetime.datetime values are NOT equal.
+
+        This method does NOT compare any division of time smaller than a minute, i.e. seconds and
+        milliseconds, if present, are not considered in the equality test.
+
+        Args:
+            datetime_1 (datetime.datetime): The first (left) value to compare.
+            datetime_2 (datetime.datetime): The second (right) value to compare.
+
+        """
+        # Could also be accomplished with datetime.replace() to zero out seconds and microseconds.
+        required_datetime_attributes = ['date', 'hour', 'minute']
+        datetime_1_has_interface = set(dir(datetime_1)).issuperset(required_datetime_attributes)
+        datetime_2_has_interface = set(dir(datetime_2)).issuperset(required_datetime_attributes)
+
+        if datetime_1_has_interface and datetime_2_has_interface:
+            self.assertNotEqual(datetime_1.date(), datetime_2.date())
+            self.assertNotEqual(datetime_1.hour, datetime_2.hour)
+            self.assertNotEqual(datetime_1.minute, datetime_2.minute)
+        else:
+            self.assertNotEqual(datetime_1, datetime_2)
 
     def _test_db_type_mysql(self):
         """
@@ -134,7 +166,7 @@ class TestTimestampField(django.test.TransactionTestCase):
 
                     self.assertEqual(retrieved_value, expected_value)
 
-    def _test_update_insert_only(self, alias):
+    def _test_update_no_auto(self, alias):
         """
         Test that automatic update is NOT triggered when not enabled.
 
@@ -150,7 +182,7 @@ class TestTimestampField(django.test.TransactionTestCase):
                 backend for an operation.
 
         """
-        # Insert a record and retrieve fresh value from database.
+        # Insert a record and retrieve inserted value from database.
         add_only_model_class_name = test_utils.get_ts_model_class_name(auto_now_add=True)
         add_only_class = getattr(test_models, add_only_model_class_name)
         add_only_model = add_only_class()
@@ -158,15 +190,15 @@ class TestTimestampField(django.test.TransactionTestCase):
         retrieved_model = add_only_class.objects.using(alias).get(id=add_only_model.id)
         inserted_value = getattr(retrieved_model, test_utils.TS_FIELD_TEST_ATTRNAME)
 
-        # Update the same record and retrieve fresh value from database.
+        # Update the same record and retrieve value of timestamp field from database.
         setattr(add_only_model, test_utils.UPDATE_FIELD_TEST_ATTRNAME, 1)
-        add_only_model.save()
+        add_only_model.save(using=alias)
         retrieved_model = add_only_class.objects.using(alias).get(id=add_only_model.id)
         updated_value = getattr(retrieved_model, test_utils.TS_FIELD_TEST_ATTRNAME)
 
-        self.assertEqual(inserted_value, updated_value)
+        self._assertDatetimeEqual(inserted_value, updated_value)
 
-    def _test_update_update_only(self, alias):
+    def _test_update_auto(self, alias):
         """
         Test that automatic update IS triggered when exclusively enabled.
 
@@ -182,7 +214,7 @@ class TestTimestampField(django.test.TransactionTestCase):
                 backend for an operation.
 
         """
-        # Insert a record and retrieve fresh value from database.
+        # Insert a record and retrieve inserted value from database.
         update_only_model_class_name = test_utils.get_ts_model_class_name(
             auto_now_update=True,
             null=True
@@ -193,21 +225,21 @@ class TestTimestampField(django.test.TransactionTestCase):
         retrieved_model = update_only_class.objects.using(alias).get(id=update_only_model.id)
         inserted_value = getattr(retrieved_model, test_utils.TS_FIELD_TEST_ATTRNAME)
 
-        # Update the same record and retrieve fresh value from database.
+        # Update the same record and retrieve new auto current timestamp value from database.
         setattr(update_only_model, test_utils.UPDATE_FIELD_TEST_ATTRNAME, 1)
-        update_only_model.save()
+        update_only_model.save(using=alias)
         retrieved_model = update_only_class.objects.using(alias).get(id=update_only_model.id)
         updated_value = getattr(retrieved_model, test_utils.TS_FIELD_TEST_ATTRNAME)
 
-        self.assertNotEqual(inserted_value, updated_value)
+        self._assertDatetimeNotEqual(inserted_value, updated_value)
 
     def test_db_type(self):
         """
         Test simple output of the field's overridden "db_type" method.
 
-        Only test thoroughly the overridden field behavior. Cursory checks will be performed to
-        ensure fallback to Django default if necessary but those values will not be extensively
-        checked.
+        Only test thoroughly the overridden field behavior (sqlite db_type output was not modified).
+        Cursory checks will be performed to ensure fallback to Django default if necessary but those
+        values will not be extensively checked.
 
         """
         backend_subtests = {
@@ -465,9 +497,7 @@ class TestTimestampField(django.test.TransactionTestCase):
                 )
                 expected_value = datetime.datetime.now()
 
-                self.assertEqual(retrieved_value.date(), expected_value.date())
-                self.assertEqual(retrieved_value.hour, expected_value.hour)
-                self.assertEqual(retrieved_value.minute, expected_value.minute)
+                self._assertDatetimeEqual(retrieved_value, expected_value)
 
     def test_sqlite3_table_structure(self):
         """
@@ -519,5 +549,5 @@ class TestTimestampField(django.test.TransactionTestCase):
         for alias in test_utils.get_db_aliases():
             engine = django.db.connections[alias].settings_dict['ENGINE']
             with self.subTest(backend=engine):
-                self._test_update_insert_only(alias)
-                self._test_update_update_only(alias)
+                self._test_update_no_auto(alias)
+                self._test_update_auto(alias)
