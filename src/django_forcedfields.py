@@ -300,10 +300,10 @@ class TimestampField(django.db.models.DateTimeField):
         """
         Generate a SQL DEFAULT clause value for use in a column DDL statement.
 
-        This is not intended to be usable by any model field class. Rather, it is only designed to
-        handle the use case of TIMESTAMP field types. None values will be converted to NULL and all
-        other values will be passed to the parent's get_prep_value() where a valid datetime value
-        will attempt to be parsed out.
+        This is not intended to be universal to any model field class. Rather, it is only designed
+        to handle the use case of TIMESTAMP field types. "None" values will be converted to NULL and
+        all other values will be passed to the parent's get_prep_value() where a valid datetime
+        value will attempt to be parsed out.
 
         Default values in Django's ORM are (sigh) usually applied in the application layer in a
         model's __init__ method if no field value was explicitly defined in model's initial kwargs.
@@ -316,10 +316,9 @@ class TimestampField(django.db.models.DateTimeField):
 
         Note that the parent DateTimeField/DateField can raise validation errors in the model.save()
         call without having called full_clean(). ValidationErrors are raised in
-        DateTimeField.to_python which is called by DateTimeField.get_prep_value (on save) and by
+        DateTimeField.to_python() which is called by DateTimeField.get_prep_value() (on save) and by
         the model's clean methods (full_clean(), etc.). Apparently, to_python() is the "first step
-        in every validation." I do somewhat question the choice of placing datetime value validation
-        in DateTimeField.to_python().
+        in every validation."
 
         See:
             https://docs.djangoproject.com/en/dev/ref/forms/validation/

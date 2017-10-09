@@ -79,7 +79,9 @@ class TimestampFieldTestConfig:
 
     """
 
-    def __init__(self, *, kwargs_dict, db_type_mysql, db_type_postgresql, insert_values_dict):
+    def __init__(
+        self, *, kwargs_dict, db_type_mysql, db_type_postgresql, db_type_sqlite,
+        insert_values_dict):
         """
         Args:
             kwargs_dict (dict): A dictionary of the k/v pairs to be passed as keyword arguments to
@@ -87,6 +89,7 @@ class TimestampFieldTestConfig:
             db_type_mysql (str): The expected output of db_type() for the MySQL backend.
             db_type_postgresql (str): The expected output of db_type() for the PostgreSQL
                 backend.
+            db_type_sqlite (str): The expected output of db_type() for the sqlite3 backend.
             insert_values_dict (dict): A dictionary of test input values (keys) and the resulting
                 values that are expected to be retrieved from the database (values) after new record
                 insert.
@@ -98,6 +101,7 @@ class TimestampFieldTestConfig:
         self.kwargs_dict = kwargs_dict
         self.db_type_mysql = db_type_mysql
         self.db_type_postgresql = db_type_postgresql
+        self.db_type_sqlite = db_type_sqlite
         self.insert_values_dict = insert_values_dict
 
 
@@ -109,6 +113,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={},
         db_type_mysql='TIMESTAMP',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE',
+        db_type_sqlite='DATETIME',
         insert_values_dict={
             django.db.models.NOT_PROVIDED: django.db.utils.IntegrityError,
             None: django.db.utils.IntegrityError,
@@ -119,6 +124,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'null': True},
         db_type_mysql='TIMESTAMP',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE',
+        db_type_sqlite='DATETIME',
         insert_values_dict={
             django.db.models.NOT_PROVIDED: None,
             None: None,
@@ -129,6 +135,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'auto_now': True},
         db_type_mysql='TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
+        db_type_sqlite='DATETIME DEFAULT CURRENT_TIMESTAMP',
         insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
@@ -139,6 +146,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'auto_now': True, 'null': True},
         db_type_mysql='TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
+        db_type_sqlite='DATETIME DEFAULT CURRENT_TIMESTAMP',
         insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
@@ -149,6 +157,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'auto_now_add': True},
         db_type_mysql='TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
+        db_type_sqlite='DATETIME DEFAULT CURRENT_TIMESTAMP',
         insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
@@ -159,6 +168,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'auto_now_add': True, 'auto_now_update': True},
         db_type_mysql='TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
+        db_type_sqlite='DATETIME DEFAULT CURRENT_TIMESTAMP',
         insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
@@ -169,6 +179,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'auto_now_add': True, 'auto_now_update': True, 'null': True},
         db_type_mysql='TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
+        db_type_sqlite='DATETIME DEFAULT CURRENT_TIMESTAMP',
         insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
@@ -179,6 +190,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'auto_now_add': True, 'null': True},
         db_type_mysql='TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP',
+        db_type_sqlite='DATETIME DEFAULT CURRENT_TIMESTAMP',
         insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
@@ -189,6 +201,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'auto_now_update': True},
         db_type_mysql='TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE',
+        db_type_sqlite='DATETIME',
         insert_values_dict={
             django.db.models.NOT_PROVIDED: django.db.utils.IntegrityError,
             None: django.db.utils.IntegrityError,
@@ -199,6 +212,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'auto_now_update': True, 'null': True},
         db_type_mysql='TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE',
+        db_type_sqlite='DATETIME',
         insert_values_dict={
             django.db.models.NOT_PROVIDED: None,
             None: None,
@@ -209,6 +223,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'auto_now_update': True, 'default': _DEFAULT_DATETIME},
         db_type_mysql='TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\' ON UPDATE CURRENT_TIMESTAMP',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
+        db_type_sqlite='DATETIME DEFAULT \'{!s}\''.format(_DEFAULT_DATETIME),
         insert_values_dict={
             django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
             None: django.db.utils.IntegrityError,
@@ -219,6 +234,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'auto_now_update': True, 'default': _DEFAULT_DATETIME, 'null': True},
         db_type_mysql='TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\' ON UPDATE CURRENT_TIMESTAMP',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
+        db_type_sqlite='DATETIME DEFAULT \'{!s}\''.format(_DEFAULT_DATETIME),
         insert_values_dict={
             django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
             None: None,
@@ -229,6 +245,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'default': _DEFAULT_DATETIME},
         db_type_mysql='TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\'',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
+        db_type_sqlite='DATETIME DEFAULT \'{!s}\''.format(_DEFAULT_DATETIME),
         insert_values_dict={
             django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
             None: django.db.utils.IntegrityError,
@@ -239,6 +256,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'default': _DEFAULT_DATETIME, 'null': True},
         db_type_mysql='TIMESTAMP DEFAULT \'' + _DEFAULT_DATETIME_STR + '\'',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT \'' + _DEFAULT_DATETIME_STR + "'",
+        db_type_sqlite='DATETIME DEFAULT \'{!s}\''.format(_DEFAULT_DATETIME),
         insert_values_dict={
             django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
             None: None,
@@ -249,6 +267,7 @@ TS_FIELD_TEST_CONFIGS = [
         kwargs_dict={'default': None, 'null': True},
         db_type_mysql='TIMESTAMP DEFAULT NULL',
         db_type_postgresql='TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL',
+        db_type_sqlite='DATETIME DEFAULT NULL',
         insert_values_dict={
             django.db.models.NOT_PROVIDED: None,
             None: None,

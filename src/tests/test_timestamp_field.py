@@ -82,7 +82,7 @@ class TestTimestampField(django.test.TransactionTestCase):
         """
         Test output of the custom field db_type method with the MySQL backend.
 
-        Internal component of the custom field's db_type method return values.
+        Broken into discrete method to reduce apparent block nesting.
 
         """
         connection = django.db.connections[test_utils.ALIAS_MYSQL]
@@ -96,7 +96,7 @@ class TestTimestampField(django.test.TransactionTestCase):
         """
         Test output of custom field db_type method with the PostgreSQL backend.
 
-        Internal component of the custom field's db_type method return values.
+        Broken into discrete method to reduce apparent block nesting.
 
         """
         connection = django.db.connections[test_utils.ALIAS_POSTGRESQL]
@@ -105,6 +105,20 @@ class TestTimestampField(django.test.TransactionTestCase):
             with self.subTest(arguments=current_kwargs_string):
                 test_field = django_forcedfields.TimestampField(**config.kwargs_dict)
                 self.assertEqual(test_field.db_type(connection), config.db_type_postgresql)
+
+    def _test_db_type_sqlite(self):
+        """
+        Test output of custom field db_type method with the sqlite3 backend.
+
+        Broken into discrete method to reduce apparent block nesting.
+
+        """
+        connection = django.db.connections[test_utils.ALIAS_SQLITE]
+        for config in test_utils.TS_FIELD_TEST_CONFIGS:
+            current_kwargs_string = ', '.join(config.kwargs_dict.keys())
+            with self.subTest(arguments=current_kwargs_string):
+                test_field = django_forcedfields.TimestampField(**config.kwargs_dict)
+                self.assertEqual(test_field.db_type(connection), config.db_type_sqlite)
 
     def _test_insert_values(self, test_model_class, values_dict):
         """
@@ -242,12 +256,12 @@ class TestTimestampField(django.test.TransactionTestCase):
         values will not be extensively checked.
 
         """
-        backend_subtests = {
+        db_type_subtests = {
             test_utils.ALIAS_MYSQL: self._test_db_type_mysql,
-            test_utils.ALIAS_POSTGRESQL: self._test_db_type_postgresql
+            test_utils.ALIAS_POSTGRESQL: self._test_db_type_postgresql,
+            test_utils.ALIAS_SQLITE: self._test_db_type_sqlite
         }
-
-        for alias, subtest_callable in backend_subtests.items():
+        for alias, subtest_callable in db_type_subtests.items():
             db_backend = django.db.connections[alias].settings_dict['ENGINE']
             with self.subTest(backend=db_backend):
                 subtest_callable()
