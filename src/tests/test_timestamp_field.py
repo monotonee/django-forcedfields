@@ -438,7 +438,7 @@ class TestTimestampField(django.test.TransactionTestCase):
 
         self.assertEqual(record[0], 'timestamp without time zone')
         self.assertEqual(record[1], 'no')
-        self.assertEqual(record[2], 'now()')
+        self.assertEqual(record[2], 'current_timestamp')
 
     def test_saved_value_datetime(self):
         """
