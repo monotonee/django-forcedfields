@@ -56,3 +56,6 @@ INSTALLED_APPS = [
 #         django.db.models.fields.DateTimeCheckMixin.check()
 #         django.db.models.fields.DateField._check_fix_default_value()
 SILENCED_SYSTEM_CHECKS = ['fields.W161']
+
+USE_TZ = False
+TIME_ZONE = 'UTC'

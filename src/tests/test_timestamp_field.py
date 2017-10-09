@@ -91,8 +91,7 @@ class TestTimestampField(django.test.TransactionTestCase):
             with self.subTest(attr_value=key):
                 self._test_insert_all_backends(test_model_class, key, value)
 
-    def _test_insert_all_backends(
-        self, test_model_class, attr_value, expected_value):
+    def _test_insert_all_backends(self, test_model_class, attr_value, expected_value):
         """
         INSERT and SELECT field attribute value all available DB backends.
 
@@ -445,7 +444,7 @@ class TestTimestampField(django.test.TransactionTestCase):
         """
         Test that the automatic timestamp value is the current datetime.
 
-        Due to latency in operations, hgih precision cannot be used when comparing inserted and
+        Due to latency in operations, high precision cannot be used when comparing inserted and
         retrieved datetime values. Therefore, seconds and milliseconds are ignored and this test
         only comapres dates, hours, and minutes.
 
@@ -458,11 +457,13 @@ class TestTimestampField(django.test.TransactionTestCase):
                 test_model = test_model_class()
                 test_model.save(using=alias)
                 retrieved_model = test_model_class.objects.using(alias).get(
-                    id=test_model.id)
+                    id=test_model.id
+                )
                 retrieved_value = getattr(
                     retrieved_model,
-                    test_utils.TS_FIELD_TEST_ATTRNAME)
-                expected_value = datetime.datetime.today()
+                    test_utils.TS_FIELD_TEST_ATTRNAME
+                )
+                expected_value = datetime.datetime.now()
 
                 self.assertEqual(retrieved_value.date(), expected_value.date())
                 self.assertEqual(retrieved_value.hour, expected_value.hour)

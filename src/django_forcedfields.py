@@ -45,6 +45,7 @@ import datetime
 
 import django.core.checks
 import django.db.models
+import django.db.models.functions
 import django.db.utils
 
 
@@ -404,34 +405,28 @@ class TimestampField(django.db.models.DateTimeField):
 
     def pre_save(self, model_instance, add):
         """
-        Add auto_now_update to parent class' pre_save() implementation.
+        Set current timestamp if auto_now_update option is active.
 
-        The SQL compiler (django.db.models.sql.compiler.SQLInsertCompiler) call this method on
+        If an auto_now, auto_now_add, or auto_now_update condition is active, override the field
+        value with current timestamp. This may not reflect underlying DB behavior in which explicit
+        values override DEFAULT and ON UPDATE, but it remains consistent with parent DateTimeField
+        behavior.
+
+        The model's attribute value will be set to a Django Func() expression when an auto_now*
+        condition is active. The only other option is to set the model attribute to a Python
+        datetime value and hope that it is not too different from the value that the database
+        generated. Given the common use cases of the auto_now* options, I deem the acceptable as
+        historically, one should expect automatic timestamps to be generated in the database instead
+        of the application.
+
+        For future reference, note that in the parent DateTimeField, date parse validation is
+        triggered by SQL compiler through get_db_prep_save(), get_db_prep_value(), get_prep_value(),
+        which finally calls to_python(), which in turn raises ValidationError if date parse fails.
+
+        The SQL compiler (django.db.models.sql.compiler.SQLInsertCompiler) calls this method on
         fields to get the value to be inserted in the SQL insert VALUES list.
 
-        I would like to implement this so that if an explcitly-assigned value exists on the model
-        attribute, it will disable automatic setting of the datetime. This may be a future feature.
-        On the other hand, that behavior can be largely emulated by setting "default" kwarg to a
-        callable that returns datetime.datetime.today() and setting all auto_now options to False.
-
-        Previously, I had attempted to avoid setting a current datetime value from within the ORM
-        layer, instead allowing the DB engine to set it using database functions such as NOW() or
-        keywords such as CURRENT_TIMESTAMP.
-
-        Unfortunately, as is often the case, the ORM contains a limitation in that any and all
-        output by get_db_prep_value() is quoted in the final, compiled SQL string output by the ORM.
-        PostgreSQL and sqlite3 interpreted NOW() as a function even surrounded by quotes but MySQL
-        did not. I can find no way to disable the quoting of get_db_prep_value() output from within
-        a custom field class and so must rely on the ORM layer datetime value overrides.
-
-        I'm going to save my previous implementation here for easy retrieval in case I discover a
-        solution to the quote problem. Most logic was handled in get_db_prep_value.
-
-        Example:
-            self._get_prep_value_add = add
-            return super(django.db.models.DateField, self).pre_save(
-                model_instance,
-                add)
+        https://github.com/django/django/blob/master/django/db/models/sql/compiler.py
 
         See:
             https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.pre_save
@@ -439,8 +434,11 @@ class TimestampField(django.db.models.DateTimeField):
         """
         self._get_prep_value_add = add
 
+        # Based on my review of Django source, I do not believe one can omit a value altogether for
+        # a field in an INSERT or UPDATE SQL statement. The ModelBase.save() method seems to
+        # indiscriminately sweep all fields into the insert process. Therefore, use explicit value.
         if self.auto_now or (self.auto_now_update and not add) or (self.auto_now_add and add):
-            value = datetime.datetime.today()
+            value = django.db.models.functions.Now()
             setattr(model_instance, self.attname, value)
         else:
             # This super() call is correct. Leave it alone.

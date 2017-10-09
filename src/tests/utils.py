@@ -18,6 +18,7 @@ import sys
 
 import django.db.models
 import django.db.utils
+import django.utils.timezone
 
 
 # Utilities to assist with referencing DATABASES settings dictionary.
@@ -100,7 +101,7 @@ class TimestampFieldTestConfig:
         self.insert_values_dict = insert_values_dict
 
 
-_DEFAULT_DATETIME = datetime.datetime.today().replace(microsecond=0)
+_DEFAULT_DATETIME = datetime.datetime.now().replace(microsecond=0)
 _DEFAULT_DATETIME_STR = str(_DEFAULT_DATETIME)
 TS_FIELD_TEST_ATTRNAME = 'ts_field_1'
 TS_FIELD_TEST_CONFIGS = [
