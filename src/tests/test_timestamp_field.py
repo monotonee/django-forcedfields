@@ -78,48 +78,6 @@ class TestTimestampField(django.test.TransactionTestCase):
         else:
             self.assertNotEqual(datetime_1, datetime_2)
 
-    def _test_db_type_mysql(self):
-        """
-        Test output of the custom field db_type method with the MySQL backend.
-
-        Broken into discrete method to reduce apparent block nesting.
-
-        """
-        connection = django.db.connections[test_utils.ALIAS_MYSQL]
-        for config in test_utils.TS_FIELD_TEST_CONFIGS:
-            current_kwargs_string = ', '.join(config.kwargs_dict.keys())
-            with self.subTest(arguments=current_kwargs_string):
-                test_field = django_forcedfields.TimestampField(**config.kwargs_dict)
-                self.assertEqual(test_field.db_type(connection), config.db_type_mysql)
-
-    def _test_db_type_postgresql(self):
-        """
-        Test output of custom field db_type method with the PostgreSQL backend.
-
-        Broken into discrete method to reduce apparent block nesting.
-
-        """
-        connection = django.db.connections[test_utils.ALIAS_POSTGRESQL]
-        for config in test_utils.TS_FIELD_TEST_CONFIGS:
-            current_kwargs_string = ', '.join(config.kwargs_dict.keys())
-            with self.subTest(arguments=current_kwargs_string):
-                test_field = django_forcedfields.TimestampField(**config.kwargs_dict)
-                self.assertEqual(test_field.db_type(connection), config.db_type_postgresql)
-
-    def _test_db_type_sqlite(self):
-        """
-        Test output of custom field db_type method with the sqlite3 backend.
-
-        Broken into discrete method to reduce apparent block nesting.
-
-        """
-        connection = django.db.connections[test_utils.ALIAS_SQLITE]
-        for config in test_utils.TS_FIELD_TEST_CONFIGS:
-            current_kwargs_string = ', '.join(config.kwargs_dict.keys())
-            with self.subTest(arguments=current_kwargs_string):
-                test_field = django_forcedfields.TimestampField(**config.kwargs_dict)
-                self.assertEqual(test_field.db_type(connection), config.db_type_sqlite)
-
     def _test_insert_values(self, test_model_class, values_dict):
         """
         Iteratively instantiate test model classes with different field values.
@@ -249,22 +207,21 @@ class TestTimestampField(django.test.TransactionTestCase):
 
     def test_db_type(self):
         """
-        Test simple output of the field's overridden "db_type" method.
+        Test output of the field's overridden "db_type" method.
 
-        Only test thoroughly the overridden field behavior (sqlite db_type output was not modified).
-        Cursory checks will be performed to ensure fallback to Django default if necessary but those
-        values will not be extensively checked.
+        The Field.db_type() method is responsible for generating most of the SQL field's DDL such
+        as field data type, defaults, ON UPDATE clauses, etc. Ensure that db_type is generating
+        accurate DDL for the given field kwarg combination.
 
         """
-        db_type_subtests = {
-            test_utils.ALIAS_MYSQL: self._test_db_type_mysql,
-            test_utils.ALIAS_POSTGRESQL: self._test_db_type_postgresql,
-            test_utils.ALIAS_SQLITE: self._test_db_type_sqlite
-        }
-        for alias, subtest_callable in db_type_subtests.items():
-            db_backend = django.db.connections[alias].settings_dict['ENGINE']
-            with self.subTest(backend=db_backend):
-                subtest_callable()
+        for test_config in test_utils.TS_FIELD_TEST_CONFIGS:
+            test_field = django_forcedfields.TimestampField(**test_config.kwargs_dict)
+            test_kwargs_string = ', '.join(test_config.kwargs_dict.keys())
+            for alias, expected_output in test_config.db_type_dict.items():
+                connection = django.db.connections[alias]
+                connection_engine = connection.settings_dict['ENGINE']
+                with self.subTest(backend=connection_engine, kwargs=test_kwargs_string):
+                    self.assertEqual(test_field.db_type(connection), expected_output)
 
     def test_field_argument_check(self):
         """
