@@ -11,7 +11,7 @@ mariadb_cli:
 mysql_cli:
 	docker-compose exec mysql mysql
 
-postgres_cli:
+postgresql_cli:
 	docker-compose exec postgresql psql -U tester
 
 lint:
