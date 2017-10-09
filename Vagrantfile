@@ -81,7 +81,7 @@ Vagrant.configure("2") do |config|
   # This is done in the provisioner shell script.
   config.ssh.forward_x11 = true
 
-  config.vm.provision 'file', source: 'vagrant/files/home/.profile', destination: '.profile'
-  config.vm.provision 'file', source: 'vagrant/files/home/.config/geany/geany.conf', destination: '.config/geany/geany.conf'
-  config.vm.provision 'shell', path: 'vagrant/provision.sh'
+  config.vm.provision 'file', source: 'configs/vagrant/files/home/.profile', destination: '.profile'
+  config.vm.provision 'file', source: 'configs/vagrant/files/home/.config/geany/geany.conf', destination: '.config/geany/geany.conf'
+  config.vm.provision 'shell', path: 'configs/vagrant/provision.sh'
 end

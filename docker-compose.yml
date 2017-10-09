@@ -7,24 +7,24 @@
 # Recall that MYSQL_ALLOW_EMPTY_PASSWORD allows empty password for root user.
 version: '2'
 services:
-  mariadb:
-    image: mariadb:10.3
-    ports:
-      - '127.0.0.1:3307:3307'
-    volumes:
-      - ./docker/mariadb/conf.d:/etc/mysql/conf.d:ro
-      - ./docker/mariadb/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
-    environment:
-      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-      - MYSQL_PASSWORD=tester
-      - MYSQL_USER=tester
+  # mariadb:
+    # image: mariadb:latest
+    # ports:
+      # - '127.0.0.1:3307:3307'
+    # volumes:
+      # - ./configs/docker/mariadb/conf.d:/etc/mysql/conf.d:ro
+      # - ./configs/docker/mariadb/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    # environment:
+      # - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      # - MYSQL_PASSWORD=tester
+      # - MYSQL_USER=tester
   mysql:
     image: mysql:latest
     ports:
       - '127.0.0.1:3306:3306'
     volumes:
-      - ./docker/mysql/conf.d:/etc/mysql/conf.d:ro
-      - ./docker/mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./configs/docker/mysql/conf.d:/etc/mysql/conf.d:ro
+      - ./configs/docker/mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
     environment:
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
       - MYSQL_PASSWORD=tester

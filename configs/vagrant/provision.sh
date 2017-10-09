@@ -23,7 +23,7 @@ home_dir=/home/${default_user}
 src_dir=/vagrant
 
 echo 'TASK: Set timezone'
-timedatectl set-timezone America/Indiana/Indianapolis
+timedatectl set-timezone UTC
 
 echo 'TASK: Synchronize package databases'
 pacman -Syy --noconfirm --quiet
