@@ -292,21 +292,31 @@ def get_ts_model_class_name(**kwargs):
 
 class TemporaryMigration:
     """
-    This class handles the creation and destruction of a single model's table.
+    A context manager that handles the creation and destruction of a single model's temporary table.
 
-    The table is created as TEMPORARY. This class was created in an attempt to counter the implicit
-    transaction commits of DDL statements in MySQL/MariaDB. However, TEMPORARY tables' structure
-    cannot be queried or examined through the information_schema database. SHOW CREATE text parsing
-    is an option but investment-to-return ratio was unfavorable. See tests.util comments for more
-    detail.
+    Entering the context manager starts a migration of the passed model to a temporary table. The
+    table is destroyed on context block exit.
+
+    The table is created with the TEMPORARY SQL keyword. This class was created in an attempt to
+    counter the implicit transaction commits of DDL statements in MySQL/MariaDB. However, TEMPORARY
+    tables' structure cannot be queried or examined through the information_schema database which
+    breaks the database table structure tests. I could attempt to parse the output from a SHOW
+    CREATE statement but the investment-to-return ratio is currently unfavorable.
+
+    This functionality was defined as a context manager to ensure that the monkey-patching to
+    the SQL compiler is inevitably reversed.
 
     Warning:
         This class is no longer used in the tests. I'm saving this for future reference and until
-        I'm sure I won't need it.
+        I'm sure I won't need it. It also serves as a refresher for me on how the Django ORM
+        internals work. This solution strikes me as clever but smelly.
+
+    See:
+        https://docs.python.org/3/reference/compound_stmts.html#the-with-statement
 
     """
 
-    ed_kwargs = {'atomic': True}
+    sql_editor_kwargs = {'atomic': True}
     sql_temporary = 'TEMPORARY'
 
     def __init__(self, connection, model):
@@ -315,16 +325,18 @@ class TemporaryMigration:
 
     def __enter__(self):
         """
+        Alter the ORM SQL compiler and migrate a model to a TEMPORARY table.
+
         self._connection.features.can_rollback_ddl == False in MySQL
 
         Note that BaseDatabaseSchemaEditor collect_sql = True bypasses actual execution and instead
-        stores generated SQL in a list.
+        stores generated SQL in a list. This could be useful.
 
         See:
             https://github.com/django/django/blob/master/django/db/backends/base/schema.py
 
         """
-        with self._connection.schema_editor(**self.ed_kwargs) as schema_editor:
+        with self._connection.schema_editor(**self.sql_editor_kwargs) as schema_editor:
             schema_editor.sql_create_table = (
                 schema_editor.sql_create_table[:7]
                 + self.sql_temporary
@@ -333,7 +345,11 @@ class TemporaryMigration:
             schema_editor.create_model(self._model)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        with self._connection.schema_editor(**self.ed_kwargs) as schema_editor:
+        """
+        Reverse ORM SQL compiler modifications and destroy the TEMPORARY table.
+
+        """
+        with self._connection.schema_editor(**self.sql_editor_kwargs) as schema_editor:
             schema_editor.sql_create_table = schema_editor.sql_create_table.replace(
                 self.sql_temporary,
                 ''
