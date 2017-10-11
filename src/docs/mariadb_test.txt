@@ -1,0 +1,178 @@
+SELECT @@sql_mode, @@explicit_defaults_for_timestamp;
+CREATE DATABASE IF NOT EXISTS test;
+USE test;
+CREATE TABLE t1 (c1 INT NOT NULL PRIMARY KEY, c2 TIMESTAMP NOT NULL);
+SELECT COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_NAME = 't1' AND COLUMN_NAME = 'c2';
+INSERT INTO t1 (c1) VALUES (0);
+SELECT c2 FROM t1 WHERE c1 = 0;
+INSERT INTO t1 (c1, c2) VALUES (1, NULL);
+SELECT c2 FROM t1 WHERE c1 = 1;
+DROP TABLE t1;
+
+
++----------------------------------------+
+| VERSION()                              |
++----------------------------------------+
+| 10.3.1-MariaDB-10.3.1+maria~jessie-log |
++----------------------------------------+
+
+
+TEST 1 - None
+Configuration
++--------------------------------------------+-----------------------------------+
+| @@sql_mode                                 | @@explicit_defaults_for_timestamp |
++--------------------------------------------+-----------------------------------+
+| NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 0 |
++--------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+---------------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT      | IS_NULLABLE | DATA_TYPE |
++-------------+---------------------+-------------+-----------+
+| c2          | current_timestamp() | NO          | timestamp |
++-------------+---------------------+-------------+-----------+
+
+Missing value insert
+2017-09-15 18:55:36
+
+NULL value insert
+2017-09-15 18:55:36
+
+
+TEST 2 - strict
+Configuration
++----------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                     | @@explicit_defaults_for_timestamp |
++----------------------------------------------------------------+-----------------------------------+
+| STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 0 |
++----------------------------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+---------------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT      | IS_NULLABLE | DATA_TYPE |
++-------------+---------------------+-------------+-----------+
+| c2          | current_timestamp() | NO          | timestamp |
++-------------+---------------------+-------------+-----------+
+
+Missing value insert
+2017-09-15 19:03:14
+
+NULL value insert
+2017-09-15 19:03:14
+
+
+TEST 3 - strict and no zero
+Configuration
++---------------------------------------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                                                  | @@explicit_defaults_for_timestamp |
++---------------------------------------------------------------------------------------------+-----------------------------------+
+| STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 0 |
++---------------------------------------------------------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+---------------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT      | IS_NULLABLE | DATA_TYPE |
++-------------+---------------------+-------------+-----------+
+| c2          | current_timestamp() | NO          | timestamp |
++-------------+---------------------+-------------+-----------+
+
+Missing value insert
+2017-09-15 19:07:57
+
+NULL value insert
+2017-09-15 19:07:57
+
+
+TEST 4 - strict and explicit
+Configuration
++----------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                     | @@explicit_defaults_for_timestamp |
++----------------------------------------------------------------+-----------------------------------+
+| STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 1 |
++----------------------------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+----------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT | IS_NULLABLE | DATA_TYPE |
++-------------+----------------+-------------+-----------+
+| c2          | NULL           | NO          | timestamp |
++-------------+----------------+-------------+-----------+
+
+Missing value insert
+ERROR 1364 (HY000): Field 'c2' doesn't have a default value
+
+NULL value insert
+2017-09-15 19:18:50
+Seems to violate documentation.
+https://mariadb.com/kb/en/library/sql-mode/#strict-mode
+https://mariadb.com/kb/en/library/server-system-variables/#explicit_defaults_for_timestamp
+
+
+TEST 5 - explicit
+Configuration
++--------------------------------------------+-----------------------------------+
+| @@sql_mode                                 | @@explicit_defaults_for_timestamp |
++--------------------------------------------+-----------------------------------+
+| NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 1 |
++--------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+----------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT | IS_NULLABLE | DATA_TYPE |
++-------------+----------------+-------------+-----------+
+| c2          | NULL           | NO          | timestamp |
++-------------+----------------+-------------+-----------+
+
+Missing value insert
+0000-00-00 00:00:00
+
+NULL value insert
+2017-09-15 19:04:31
+
+
+TEST 6 - explicit and no zero
+Configuration
++-------------------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                              | @@explicit_defaults_for_timestamp |
++-------------------------------------------------------------------------+-----------------------------------+
+| NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 1 |
++-------------------------------------------------------------------------+-----------------------------------+
+
+Information schema
+CREATE TABLE t1 (c1 INT NOT NULL PRIMARY KEY, c2 TIMESTAMP NOT NULL);
+ERROR 1067 (42000): Invalid default value for 'c2'
+
+
+TEST 7 - no zero
+Configuration
++-------------------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                              | @@explicit_defaults_for_timestamp |
++-------------------------------------------------------------------------+-----------------------------------+
+| NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 0 |
++-------------------------------------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+---------------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT      | IS_NULLABLE | DATA_TYPE |
++-------------+---------------------+-------------+-----------+
+| c2          | current_timestamp() | NO          | timestamp |
++-------------+---------------------+-------------+-----------+
+
+Missing value insert
+2017-09-15 19:06:40
+
+NULL value insert
+2017-09-15 19:06:40
+
+
+TEST 8 - strict, no zero, and explicit
+Configuration
++---------------------------------------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                                                  | @@explicit_defaults_for_timestamp |
++---------------------------------------------------------------------------------------------+-----------------------------------+
+| STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 1 |
++---------------------------------------------------------------------------------------------+-----------------------------------+
+
+Information schema
+CREATE TABLE t1 (c1 INT NOT NULL PRIMARY KEY, c2 TIMESTAMP NOT NULL);
+ERROR 1067 (42000): Invalid default value for 'c2'

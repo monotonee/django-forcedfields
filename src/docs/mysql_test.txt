@@ -1,0 +1,216 @@
+https://dev.mysql.com/doc/refman/en/timestamp-initialization.html
+https://dev.mysql.com/doc/refman/en/sql-mode.html#sql-mode-strict
+https://dev.mysql.com/doc/refman/en/server-system-variables.html#sysvar_explicit_defaults_for_timestamp
+    Remember that if no explicit DEFAULT clause, TIMESTAMP implicitly assigned DEFAULT '0000-00-00 00:00:00'.
+https://dev.mysql.com/doc/refman/en/sql-mode.html#sqlmode_no_zero_date
+
+
+SELECT @@sql_mode, @@explicit_defaults_for_timestamp;
+CREATE DATABASE IF NOT EXISTS test;
+USE test;
+CREATE TABLE t1 (c1 INT NOT NULL PRIMARY KEY, c2 TIMESTAMP NOT NULL);
+SELECT COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_NAME = 't1' AND COLUMN_NAME = 'c2';
+INSERT INTO t1 (c1) VALUES (0);
+SELECT c2 FROM t1 WHERE c1 = 0;
+INSERT INTO t1 (c1, c2) VALUES (1, NULL);
+SELECT c2 FROM t1 WHERE c1 = 1;
+DROP TABLE t1;
+
+
++------------+
+| VERSION()  |
++------------+
+| 5.7.19-log |
++------------+
+
+
+DEFAULT CONFIGURATION
++-------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                                                                                                | @@explicit_defaults_for_timestamp |
++-------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------+
+| ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 0 |
++-------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------+
+
+
+TEST 1 - None
+Configuration
++---------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                    | @@explicit_defaults_for_timestamp |
++---------------------------------------------------------------+-----------------------------------+
+| ONLY_FULL_GROUP_BY,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 0 |
++---------------------------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+-------------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT    | IS_NULLABLE | DATA_TYPE |
++-------------+-------------------+-------------+-----------+
+| c2          | CURRENT_TIMESTAMP | NO          | timestamp |
++-------------+-------------------+-------------+-----------+
+
+Missing value insert
+2017-09-15 21:05:45
+
+NULL value insert
+2017-09-15 21:05:45
+
+
+TEST 2 - strict
+Configuration
++-----------------------------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                                        | @@explicit_defaults_for_timestamp |
++-----------------------------------------------------------------------------------+-----------------------------------+
+| ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 0 |
++-----------------------------------------------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+-------------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT    | IS_NULLABLE | DATA_TYPE |
++-------------+-------------------+-------------+-----------+
+| c2          | CURRENT_TIMESTAMP | NO          | timestamp |
++-------------+-------------------+-------------+-----------+
+
+Missing value insert
+2017-09-15 21:04:21
+
+NULL value insert
+2017-09-15 21:04:21
+
+
+TEST 3 - strict and no zero
+Configuration
++----------------------------------------------------------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                                                                     | @@explicit_defaults_for_timestamp |
++----------------------------------------------------------------------------------------------------------------+-----------------------------------+
+| ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 0 |
++----------------------------------------------------------------------------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+-------------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT    | IS_NULLABLE | DATA_TYPE |
++-------------+-------------------+-------------+-----------+
+| c2          | CURRENT_TIMESTAMP | NO          | timestamp |
++-------------+-------------------+-------------+-----------+
+
+Missing value insert
+2017-09-15 20:51:35
+
+NULL value insert
+2017-09-15 20:51:35
+
+
+TEST 4 - strict and explicit
+Configuration
++-----------------------------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                                        | @@explicit_defaults_for_timestamp |
++-----------------------------------------------------------------------------------+-----------------------------------+
+| ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 1 |
++-----------------------------------------------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+----------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT | IS_NULLABLE | DATA_TYPE |
++-------------+----------------+-------------+-----------+
+| c2          | NULL           | NO          | timestamp |
++-------------+----------------+-------------+-----------+
+
+Missing value insert
+INSERT INTO t1 (c1) VALUES (0);
+ERROR 1364 (HY000): Field 'c2' doesn't have a default value
+
+NULL value insert
+INSERT INTO t1 (c1, c2) VALUES (1, NULL);
+ERROR 1048 (23000): Column 'c2' cannot be null
+
+
+TEST 5 - explicit
+Configuration
++---------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                    | @@explicit_defaults_for_timestamp |
++---------------------------------------------------------------+-----------------------------------+
+| ONLY_FULL_GROUP_BY,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 1 |
++---------------------------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+----------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT | IS_NULLABLE | DATA_TYPE |
++-------------+----------------+-------------+-----------+
+| c2          | NULL           | NO          | timestamp |
++-------------+----------------+-------------+-----------+
+
+Missing value insert
+0000-00-00 00:00:00
+Note: Perhaps the following explains this result?
+"Invalid DATE, DATETIME, or TIMESTAMP values are converted to the “zero” value of the appropriate type ('0000-00-00' or '0000-00-00 00:00:00')."
+https://dev.mysql.com/doc/refman/en/datetime.html
+
+NULL value insert
+INSERT INTO t1 (c1, c2) VALUES (1, NULL);
+ERROR 1048 (23000): Column 'c2' cannot be null
+
+
+TEST 6 - explicit and no zero
+Configuration
++--------------------------------------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                                                 | @@explicit_defaults_for_timestamp |
++--------------------------------------------------------------------------------------------+-----------------------------------+
+| ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 1 |
++--------------------------------------------------------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+----------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT | IS_NULLABLE | DATA_TYPE |
++-------------+----------------+-------------+-----------+
+| c2          | NULL           | NO          | timestamp |
++-------------+----------------+-------------+-----------+
+
+Missing value insert
+0000-00-00 00:00:00
+Note: no warning issued.
+https://dev.mysql.com/doc/refman/en/sql-mode.html#sqlmode_no_zero_in_date
+
+NULL value insert
+ERROR 1048 (23000): Column 'c2' cannot be null
+
+
+TEST 7 - no zero
+Configuration
++--------------------------------------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                                                 | @@explicit_defaults_for_timestamp |
++--------------------------------------------------------------------------------------------+-----------------------------------+
+| ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 0 |
++--------------------------------------------------------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+-------------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT    | IS_NULLABLE | DATA_TYPE |
++-------------+-------------------+-------------+-----------+
+| c2          | CURRENT_TIMESTAMP | NO          | timestamp |
++-------------+-------------------+-------------+-----------+
+
+Missing value insert
+2017-09-15 20:57:57
+
+NULL value insert
+2017-09-15 20:57:57
+
+
+TEST 8 - strict, no zero, and explicit
+Configuration
++---------------------------------------------------------------------------------------------+-----------------------------------+
+| @@sql_mode                                                                                  | @@explicit_defaults_for_timestamp |
++---------------------------------------------------------------------------------------------+-----------------------------------+
+| STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION |                                 1 |
++---------------------------------------------------------------------------------------------+-----------------------------------+
+
+Information schema
++-------------+----------------+-------------+-----------+
+| COLUMN_NAME | COLUMN_DEFAULT | IS_NULLABLE | DATA_TYPE |
++-------------+----------------+-------------+-----------+
+| c2          | NULL           | NO          | timestamp |
++-------------+----------------+-------------+-----------+
+
+Missing value insert
+ERROR 1364 (HY000): Field 'c2' doesn't have a default value
+
+NULL value insert
+ERROR 1048 (23000): Column 'c2' cannot be null
