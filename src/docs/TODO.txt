@@ -1,1 +1,13 @@
-
+Add support for CHAR DEFAULT clause.
+Make note in README that MariaDB places parenthesis after functions in information_schema?
+    Alternately, normalize table schema tests by stripping parentheses.
+    ======================================================================
+    FAIL: test_mysql_table_structure (tests.test_timestamp_field.TestTimestampField)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+      File "/vagrant/src/tests/test_timestamp_field.py", line 396, in test_mysql_table_structure
+        self.assertEqual(record[2], 'current_timestamp()')
+    AssertionError: 'current_timestamp' != 'current_timestamp()'
+    - current_timestamp
+    + current_timestamp()
+    ?                  ++
