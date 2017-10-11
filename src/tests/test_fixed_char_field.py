@@ -1,5 +1,5 @@
 """
-Tests of the fixed char field.
+Tests of FixedCharField.
 
 """
 
@@ -174,11 +174,46 @@ class TestFixedCharField(django.test.TestCase):
         test_value = 'four'
         test_model = test_models.FixedCharRecord(char_field_1=test_value)
         for alias in self._db_aliases:
-            db_backend = django.conf.settings.DATABASES[alias]['ENGINE']
+            engine = django.conf.settings.DATABASES[alias]['ENGINE']
 
-            with self.subTest(backend=db_backend):
+            with self.subTest(backend=engine):
                 test_model.save(using=alias)
                 result_record = test_models.FixedCharRecord.objects.using(alias).get(
                     char_field_1=test_value
                 )
                 self.assertEqual(result_record.char_field_1, test_value)
+
+    def test_save_null(self):
+        """
+        Test that NULL is correctly saved when model field attribute is None.
+
+        The Python database backend converts NULL values to None. The ORM appears to have no part
+        in the value conversion. Therefore, a simple test for None is acceptable for now.
+
+        As an aside, I did run a one-time test to ascertain for certain if NULL was stored in the
+        database. After changing this TestCase to a TransactionTestCase to avoid per-test
+        transactions, I logged in to the MySQL server through the MySQL CLI and verified that the
+        ORM does insert a NULL value when passed an instance of Python's None.
+
+        In addition, I verified in the source code that the ORM updates fields with NULL values for
+        Python's None.
+
+        See:
+            https://github.com/django/django/blob/master/django/db/models/sql/compiler.py
+                django.db.models.sql.compiler.SQLUpdateCompiler.as_sql
+
+        This test is not strictly necessary but I want to ensure that the custom field class method
+        overrides don't affect standard operations.
+
+        """
+        test_value = 'four'
+        test_model = test_models.FixedCharRecord(char_field_1=test_value, char_field_2=None)
+        for alias in self._db_aliases:
+            engine = django.conf.settings.DATABASES[alias]['ENGINE']
+
+            with self.subTest(backend=engine):
+                test_model.save(using=alias)
+                result_record = test_models.FixedCharRecord.objects.using(alias).get(
+                    char_field_1=test_value
+                )
+                self.assertEqual(result_record.char_field_2, None)

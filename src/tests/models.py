@@ -51,6 +51,7 @@ class FixedCharRecord(django.db.models.Model):
     """
 
     char_field_1 = django_forcedfields.FixedCharField(max_length=4)
+    char_field_2 = django_forcedfields.FixedCharField(max_length=4, null=True)
 
 
 # Dynamically generate timestamp field test models.
