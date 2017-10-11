@@ -355,7 +355,8 @@ class TemporaryMigration:
     counter the implicit transaction commits of DDL statements in MySQL/MariaDB. However, TEMPORARY
     tables' structure cannot be queried or examined through the information_schema database which
     breaks the database table structure tests. I could attempt to parse the output from a SHOW
-    CREATE statement but the investment-to-return ratio is currently unfavorable.
+    CREATE statement but the investment-to-return ratio is currently unfavorable. See tests.models
+    module doc block for a more thorough explanation of why this class was created.
 
     This functionality was defined as a context manager to ensure that the monkey-patching to
     the SQL compiler is inevitably reversed.

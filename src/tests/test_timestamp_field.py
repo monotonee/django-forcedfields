@@ -1,5 +1,5 @@
 """
-Tests of the timestamp field.
+Tests for TimestampField.
 
 """
 
@@ -30,9 +30,7 @@ class TestTimestampField(django.test.TransactionTestCase):
 
     See:
         http://stackoverflow.com/a/23326971
-
-    TODO:
-        Add db_type return value checks for sqlite3.
+        https://docs.djangoproject.com/en/dev/topics/testing/tools/#transactiontestcase
 
     """
 
@@ -61,12 +59,13 @@ class TestTimestampField(django.test.TransactionTestCase):
         This method does NOT compare any division of time smaller than a minute, i.e. seconds and
         milliseconds, if present, are not considered in the equality test.
 
+        This could also be implemented with datetime.replace() to zero out seconds and microseconds.
+
         Args:
             datetime_1 (datetime.datetime): The first (left) value to compare.
             datetime_2 (datetime.datetime): The second (right) value to compare.
 
         """
-        # Could also be accomplished with datetime.replace() to zero out seconds and microseconds.
         required_datetime_attributes = ['date', 'hour', 'minute']
         datetime_1_has_interface = set(dir(datetime_1)).issuperset(required_datetime_attributes)
         datetime_2_has_interface = set(dir(datetime_2)).issuperset(required_datetime_attributes)

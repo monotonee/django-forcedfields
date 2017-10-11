@@ -50,7 +50,15 @@ INSTALLED_APPS = [
     'tests'
 ]
 
-# Silence "HINT: It seems you set a fixed date / time / datetime value as default for this field."
+# Silence checks system warning:
+#
+# "HINT: It seems you set a fixed date / time / datetime value as default for this field."
+# This may not be what you want. If you want to have the current date as default, use
+# `django.utils.timezone.now`.
+#
+# Django seems to want one to pass a callable as the value of the field's "default" option. It needs
+# to shut up. I know exactly what I'm doing and what I want.
+#
 # See:
 #     https://github.com/django/django/blob/master/django/db/models/fields/__init__.py
 #         django.db.models.fields.DateTimeCheckMixin.check()
