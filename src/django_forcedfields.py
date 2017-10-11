@@ -1,32 +1,39 @@
 """
-Defines model fields designed to force field data types in the database.
+Defines custom Django ORM model fields designed to force field data types in the database.
 
 Databases should be as self-documenting and semantic as possible, independent of any application
-code, ORM models, or documentation. I will not compromise this principle for the sake of an ORM's
-conveniences.
+code, ORM models, or documentation. To that end, this module aims to force the ORM to conduct more
+explicit database operations and to shift duties from the application to the database where
+appropriate and consistent with best practices.
 
 Django's documentation concerning the creation of custom model fields is cursory and unclear and the
-method names are needlessly vague. As I understand it, the following is the flow of Field API method
-calls in order starting with fetching data FROM the database and ending with returning data TO the
-database:
+method names are needlessly vague. As I understand it, the following is a very rough overview of the
+flow of Field API method calls in order starting with fetching data FROM the database and ending
+with returning data TO the database:
 
     1. from_db_value
     2. to_python
         - "Convert the input value into the expected Python data type"
+        - Usually not called by the SQL compilers directly. Used internally by the Field classes.
     3. pre_save
         - "Return field's value just before saving."
+        - Called by the SQL compilers to fetch the value of the model's field attribute for the
+            first time before eventually being passed to the Field's *_prep_value() methods.
         - See source for django.db.models.sql.SQLCompiler.pre_save_val()
     4. get_prep_value
         - "Perform preliminary non-db specific value checks and conversions."
-        - Seems to be used internally. Doesn't seem to be called by SQL compiler.
+        - Seems to be used internally by the Field classes. Doesn't seem to be called directly by
+            SQL compilers.
     5. get_db_prep_value
         - "Return field's value prepared for interacting with the database backend."
-        - Seems to be used internally. Doesn't seem to be called by SQL compiler.
-        - Called by base Field class' get_db_prep_save().
-        - Called in django.db.models.sql.compiler.SQLInsertCompiler.prepare_value()
+        - Seems to be used internally by the Field classes. Doesn't seem to be called directly by
+            SQL compilers.
+        - For example, this is called by base Field class' get_db_prep_save().
     6. get_db_prep_save
         - "Return field's value prepared for saving into a database."
-        - Called by SQL compiler. See source for django.db.models.sql.SQLCompiler.prepare_value().
+        - Called directly by SQL compilers.
+        - See source for django.db.models.sql.SQLCompiler.prepare_value().
+        - Called in django.db.models.sql.compiler.SQLInsertCompiler.prepare_value()
 
 See:
     https://docs.djangoproject.com/en/dev/howto/custom-model-fields/
@@ -34,7 +41,9 @@ See:
     https://github.com/django/django/blob/master/django/db/models/fields/__init__.py
     https://github.com/django/django/blob/master/django/db/models/sql/compiler.py
 
-I have attempted to follow Google's Python style standards.
+I have attempted to follow PEP8 styles, supplemented by Google's Python style standards. Some PEP8
+standards are rather arcane such as 79-character maximum line length. In this and similar cases, I
+defer to Google's style guide. I use Google's doc block and inline comment formatting standards.
 
 See:
     https://google.github.io/styleguide/pyguide.html?showone=Line_length#Line_length
@@ -49,7 +58,7 @@ import django.db.utils
 
 class FixedCharField(django.db.models.CharField):
     """
-    Stores Python strings in fixed-length "char" database fields.
+    A custom Django ORM field class that stores values in fixed-length "char" database fields.
 
     Django's core CharField class saves all values in varchar data types with no option to use a
     char data type instead.
@@ -72,7 +81,7 @@ class FixedCharField(django.db.models.CharField):
 
 class TimestampField(django.db.models.DateTimeField):
     """
-    Designed for use as a timezone-free system timestamp field.
+    A custom Django ORM field class designed for use as a timezone-free system timestamp field.
 
     System timestamps are intended to record system-level events and moments in time. They
     contribute to database and record metadata.
@@ -82,8 +91,8 @@ class TimestampField(django.db.models.DateTimeField):
 
     MySQL/MariaDB supports the TIMESTAMP data type which includes special modifiers to ease its use
     as a system utility. These include the ON UPDATE CURRENT_TIMESTAMP modifier which essentially
-    creates an implicit trigger. Django uses MySQL's DATETIME data type by default. This class uses
-    MySQL's TIMESTAMP data type instead.
+    creates an implicit trigger. Django uses MySQL's DATETIME data type by default while this class
+    overrides this and uses MySQL's TIMESTAMP data type instead.
 
     Warning:
         When using the MySQL backend, the database TIMESTAMP field will also be updated when
@@ -97,10 +106,9 @@ class TimestampField(django.db.models.DateTimeField):
         https://github.com/django/django/blob/master/django/db/backends/mysql/base.py
 
     PostgreSQL does not have anything resembling ON UPDATE CURRENT_TIMESTAMP aside from custom
-    triggers. Django uses "timestamp with time zone" in its DateTimeField. However, its DATETIME
-    equivalent data type "timestamp" does include the option to save without timezone. The explciit
-    lack of timezone most closely aligns with the intended use case of this field class and is
-    therefore used.
+    triggers. However, its equivalent of MySQL's DATETIME data type is "timestamp", which does
+    include the option to save without timezone. This explciit lack of timezone most closely aligns
+    with the intended use case of this field class and is therefore used.
 
     See:
         https://www.postgresql.org/docs/current/static/datatype-datetime.html
@@ -108,21 +116,15 @@ class TimestampField(django.db.models.DateTimeField):
 
     """
 
-    def __init__(self, auto_now_update=False, *args, **kwargs):
+    def __init__(self, *args, auto_now_update=False, **kwargs):
         """
         Override the init method to add the auto_now_update keyword argument.
-
-        self._get_prep_value_add was defined to allow multiple methods, called in different stages
-        of the database operation process, to be aware of the current operation. Django's current
-        design of a database field class prevents some methods from querying certain state about the
-        operation under which it is being called.
 
         Args:
             auto_now_update (boolean): When true, enables the automatic setting of the current
                 timestamp on update operations only. Mutually exclusive with auto_now.
 
         """
-        self._get_prep_value_add = None
         self.auto_now_update = auto_now_update
         super().__init__(*args, **kwargs)
 
@@ -134,11 +136,9 @@ class TimestampField(django.db.models.DateTimeField):
         auto_now, auto_now_add, and default keyword arguments. This method also adds a check for
         auto_now_update and auto_now exclusivity.
 
-        auto_now uses DEFAULT CURRENT_TIMESTAMP so auto_now and default are mutually exclusive.
-        Both auto_now_update and auto_now_add are mutually exclusive with auto_now since they are
-        each subsets of auto_now's functionality. The null option is independent except when False,
-        in which case the default option may not be None as it will result in an attempt to insert a
-        NULL value.
+        auto_now, auto_now_add, and default all logically define a DEFAULT clause and are therefore
+        mutually exclusive. auto_now logically defines DEFAULT and ON UPDATE clauses and is
+        therefore mutually exclusive with auto_now_add (DEFAULT) and auto_now_update (ON UPDATE).
 
         Valid permutations:
             <empty set>
@@ -184,20 +184,17 @@ class TimestampField(django.db.models.DateTimeField):
         Assemble the db_type string for the MySQL backend.
 
         Note that in MySQL, if no DEFAULT or ON UPDATE clauses are specified for a TIMESTAMP field
-        in a CREATE TABLE statement, DEFAULT CURRENT_TIMESTAMP and ON UPDATE CURRENT_TIMESTAMP are
-        automatically applied. Set DEFAULT to 0 or some other junk value to disable this.
+        in a CREATE TABLE statement, certain DEFAULT CURRENT_TIMESTAMP and ON UPDATE
+        CURRENT_TIMESTAMP values are automatically applied depending upon server configuration.
+        Enable the "explicit_defaults_for_timestamp" server system variable to disable this. See
+        README for more details.
 
-        Alternately, set the "explicit_defaults_for_timestamp" system variable to disable this
-        non-standard TIMESTAMP handling. This non-standard TIMESTAMP DEFAULT is deprecated so this
-        is a superior option.
-
-        DEFAULT must be specified in order to be compatible with MySQL server system variable
-        explicit_defaults_for_timestamp. If TRUE, DEFAULT must be explicitly defined for the
-        TIMESTAMP field. If FALSE, DEFAULT CURRENT_TIMESTAMP will be implicitly defined if no
-        explicit default is provided. All other behavior is not the concern of this field class and
-        is instead left to the database engine. MySQL strict mode, NO_ZERO_DATE, NO_ZERO_IN_DATE,
-        and explicit_defaults_for_timestamp all affect what values and defaults are valid for the
-        end user's specific field class instance.
+        At minimum, a DEFAULT clause must be specified in order to be compatible with MySQL server
+        system variable explicit_defaults_for_timestamp. MySQL strict mode, NO_ZERO_DATE,
+        NO_ZERO_IN_DATE, and explicit_defaults_for_timestamp all affect what values and defaults are
+        valid and it is the user's responsibility to effect the desired database behavior by setting
+        these configurations on the database server. See README and your database engine's
+        documentation for more details.
 
         See:
             https://dev.mysql.com/doc/refman/en/timestamp-initialization.html
@@ -240,7 +237,7 @@ class TimestampField(django.db.models.DateTimeField):
         if self.auto_now_update:
             # CURRENT_TIMESTAMP on update only.
             # Mutual exclusivity between auto_now and auto_now_update has already been ensured by
-            # this point.
+            # self._check_mutually_exclusive_options() by the time this method has been called.
             type_spec.append(ts_default_on_update)
 
         return ' '.join(type_spec)
@@ -249,7 +246,7 @@ class TimestampField(django.db.models.DateTimeField):
         """
         Assemble the db_type string for the PostgreSQL backend.
 
-        PostgreSQL has no auto_now_update/ON UPDATE clause equivalent. Values on update are handled
+        PostgreSQL has no equivalent to MySQL's ON UPDATE clause. Values on update are handled
         manually in the ORM layer. See pre_save().
 
         Args:
@@ -275,7 +272,7 @@ class TimestampField(django.db.models.DateTimeField):
         """
         Assemble the db_type string for the sqlite3 backend.
 
-        SQLite has no auto_now_update/ON UPDATE clause equivalent. Values on update are handled
+        SQLite has no equivalent to MySQL's ON UPDATE clause. Values on update are handled
         manually in the ORM layer. See pre_save().
 
         Args:
@@ -316,7 +313,9 @@ class TimestampField(django.db.models.DateTimeField):
         call without having called full_clean(). ValidationErrors are raised in
         DateTimeField.to_python() which is called by DateTimeField.get_prep_value() (on save) and by
         the model's clean methods (full_clean(), etc.). Apparently, to_python() is the "first step
-        in every validation."
+        in every validation." Therefore, ValidationError may be raised from this method since it
+        calls the parent's get_db_prep_value() method which ultimately calls to_python() in the
+        attempt to parse a datetime value.
 
         See:
             https://docs.djangoproject.com/en/dev/ref/forms/validation/
@@ -330,10 +329,10 @@ class TimestampField(django.db.models.DateTimeField):
             connection: The Django connection object that was passed to db_type().
 
         Returns:
-            str: A valid SQL DEFAULT clause usable in a column's DDL statement.
+            str: A valid SQL DEFAULT value usable in a column's DDL statement.
 
         Raises:
-            TypeError: If the passed default value cannot be converted into a valid DDL value.
+            ValidationError: If the passed default value cannot be converted into a valid DDL value.
 
         """
         default_value_prepared = value
@@ -343,6 +342,8 @@ class TimestampField(django.db.models.DateTimeField):
         else:
             # Will raise ValidationError for invalid datetime values.
             # Underlying django.utils.dateparse.parse_date() expects and requires a string.
+            # get_db_prep_value() is used instead of to_python() since DB-specific datetime formats
+            # are necessary for the DEFAULT clause value.
             default_value_prepared = super().get_db_prep_value(
                 str(value),
                 connection,
@@ -365,10 +366,7 @@ class TimestampField(django.db.models.DateTimeField):
 
         Note that returning None from this method will cause Django to simply skip this field in its
         generated CREATE TABLE statements. This allows one to define the field manually outside of
-        the ORM.
-
-        In field deconstruction, Django's Field class uses the values from an instance's attributes
-        rather than the passed **kwargs dict.
+        the ORM, a feature that may prove useful in the future.
 
         See:
             https://github.com/django/django/blob/master/django/db/models/fields/__init__.py
@@ -389,7 +387,7 @@ class TimestampField(django.db.models.DateTimeField):
 
     def deconstruct(self):
         """
-        Override the deconstruct method.
+        Override the deconstruct method to ensure auto_now_update value is preserved.
 
         See:
             https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.deconstruct
@@ -410,11 +408,13 @@ class TimestampField(django.db.models.DateTimeField):
         behavior.
 
         The model's attribute value will be set to a Django Func() expression when an auto_now*
-        condition is active. The only other option is to set the model attribute to a Python
-        datetime value and hope that it is not too different from the value that the database
-        generated. Given the common use cases of the auto_now* options, I deem the acceptable as
-        historically, one should expect automatic timestamps to be generated in the database instead
-        of the application.
+        condition is active. Given the common use cases of the auto_now* options, I deem this
+        acceptable as historically, one would expect automatic timestamps to be generated in the
+        database instead of the application.
+
+        The only other options are to set the model attribute to a Python datetime value and hope
+        that it is not too different from the value that the database generated or to issue a second
+        query after successful save to retrieve the generated current timestamp.
 
         For future reference, note that in the parent DateTimeField, date parse validation is
         triggered by SQL compiler through get_db_prep_save(), get_db_prep_value(), get_prep_value(),
@@ -423,14 +423,11 @@ class TimestampField(django.db.models.DateTimeField):
         The SQL compiler (django.db.models.sql.compiler.SQLInsertCompiler) calls this method on
         fields to get the value to be inserted in the SQL insert VALUES list.
 
-        https://github.com/django/django/blob/master/django/db/models/sql/compiler.py
-
         See:
+            https://github.com/django/django/blob/master/django/db/models/sql/compiler.py
             https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.pre_save
 
         """
-        self._get_prep_value_add = add
-
         # Based on my review of Django source, I do not believe one can omit a value altogether for
         # a field in an INSERT or UPDATE SQL statement. The ModelBase.save() method seems to
         # indiscriminately sweep all fields into the insert process. Therefore, use explicit value.
