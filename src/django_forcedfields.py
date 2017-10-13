@@ -231,7 +231,7 @@ class TimestampField(django.db.models.DateTimeField):
             type_spec.append(ts_default_default)
         elif self.has_default():
             # Set specified default on creation, no ON UPDATE action.
-            default_value = self._get_prep_default_value(self.get_default(), connection)
+            default_value = self._get_db_type_default_value(self.get_default(), connection)
             type_spec.append('DEFAULT {!s}'.format(default_value))
 
         if self.auto_now_update:
@@ -263,7 +263,7 @@ class TimestampField(django.db.models.DateTimeField):
         elif self.has_default():
             # Set specified default on creation, no ON UPDATE action.
             # Warning: PostgreSQL uses double quotes only for system identifiers.
-            default_value = self._get_prep_default_value(self.get_default(), connection)
+            default_value = self._get_db_type_default_value(self.get_default(), connection)
             type_spec.append('DEFAULT {!s}'.format(default_value))
 
         return ' '.join(type_spec)
@@ -286,12 +286,12 @@ class TimestampField(django.db.models.DateTimeField):
         if self.auto_now or self.auto_now_add:
             type_spec.append('DEFAULT CURRENT_TIMESTAMP')
         elif self.has_default():
-            default_value = self._get_prep_default_value(self.get_default(), connection)
+            default_value = self._get_db_type_default_value(self.get_default(), connection)
             type_spec.append('DEFAULT {!s}'.format(default_value))
 
         return ' '.join(type_spec)
 
-    def _get_prep_default_value(self, value, connection):
+    def _get_db_type_default_value(self, value, connection):
         """
         Generate a SQL DEFAULT clause value for use in a column DDL statement.
 
