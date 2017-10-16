@@ -201,7 +201,6 @@ class TestFixedCharField(django.test.TestCase):
             cursor.execute(sql_string, sql_params)
             record = cursor.fetchone()
 
-
         self.assertEqual(record[0], 'character')
         self.assertEqual(record[1], 'no')
         self.assertEqual(record[2], expected_column_default)
@@ -261,3 +260,41 @@ class TestFixedCharField(django.test.TestCase):
                     char_field_1=test_value
                 )
                 self.assertEqual(result_record.char_field_2, None)
+
+    def test_sqlite_table_structure(self):
+        """
+        Test correct DB table structures with sqlite3 backend.
+
+        Because all db_type method return values were tested in another test case, this method will
+        only run a cursory set of checks on the actual database table structure. This module is
+        supposed to test the custom field, not the underlying database.
+
+        Apparently PRAGMA statements cannot be prepared and/or parameterized. A sqlite syntax
+        exception is raised if one attempts to pass parameters to cursor.execute().
+
+        The PRAGMA table_info() return columns:
+        >>> [desc[0] for desc in cursor.description]
+        >>> ['cid', 'name', 'type', 'notnull', 'dflt_value', 'pk']
+
+        See:
+            https://www.sqlite.org/pragma.html#pragma_table_info
+            https://docs.djangoproject.com/en/dev/topics/db/sql/#executing-custom-sql-directly
+
+        """
+        model_class_name = test_utils.get_fc_model_class_name(
+            default=test_utils.FC_DEFAULT_VALUE,
+            max_length=test_utils.FC_DEFAULT_MAX_LENGTH
+        )
+        model_class = getattr(test_models, model_class_name)
+        connection = django.db.connections[test_utils.ALIAS_SQLITE]
+
+        sql_string = 'PRAGMA table_info({!s})'.format(model_class._meta.db_table)
+
+        with connection.cursor() as cursor:
+            cursor.execute(sql_string)
+            records = cursor.fetchall()
+        record = records[1]
+
+        self.assertEqual(record[2], 'CHAR({!s})'.format(test_utils.FC_DEFAULT_MAX_LENGTH)) # type
+        self.assertEqual(record[3], 1) # notnull
+        self.assertEqual(record[4], '\'{!s}\''.format(test_utils.FC_DEFAULT_VALUE)) # dflt_value

@@ -469,7 +469,7 @@ class TestTimestampField(django.test.TransactionTestCase):
 
                 self._assertDatetimeEqual(retrieved_value, expected_value)
 
-    def test_sqlite3_table_structure(self):
+    def test_sqlite_table_structure(self):
         """
         Test correct DB table structures with sqlite3 backend.
 
