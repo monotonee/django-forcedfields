@@ -115,7 +115,7 @@ class TestTimestampField(django.test.TransactionTestCase):
             if attr_value is django.db.models.NOT_PROVIDED:
                 test_model = test_model_class()
             else:
-                test_kwargs = {test_utils.TS_FIELD_TEST_ATTRNAME: attr_value}
+                test_kwargs = {test_utils.TS_FIELD_ATTRNAME: attr_value}
                 test_model = test_model_class(**test_kwargs)
 
             engine = django.db.connections[alias].settings_dict['ENGINE']
@@ -130,7 +130,7 @@ class TestTimestampField(django.test.TransactionTestCase):
                     )
                     retrieved_value = getattr(
                         retrieved_record_model,
-                        test_utils.TS_FIELD_TEST_ATTRNAME
+                        test_utils.TS_FIELD_ATTRNAME
                     )
                     if class_expected:
                         retrieved_value = retrieved_value.__class__
@@ -159,13 +159,13 @@ class TestTimestampField(django.test.TransactionTestCase):
         add_only_model = add_only_class()
         add_only_model.save(using=alias)
         retrieved_model = add_only_class.objects.using(alias).get(id=add_only_model.id)
-        inserted_value = getattr(retrieved_model, test_utils.TS_FIELD_TEST_ATTRNAME)
+        inserted_value = getattr(retrieved_model, test_utils.TS_FIELD_ATTRNAME)
 
         # Update the same record and retrieve value of timestamp field from database.
-        setattr(add_only_model, test_utils.UPDATE_FIELD_TEST_ATTRNAME, 1)
+        setattr(add_only_model, test_utils.TS_UPDATE_FIELD_ATTRNAME, 1)
         add_only_model.save(using=alias)
         retrieved_model = add_only_class.objects.using(alias).get(id=add_only_model.id)
-        updated_value = getattr(retrieved_model, test_utils.TS_FIELD_TEST_ATTRNAME)
+        updated_value = getattr(retrieved_model, test_utils.TS_FIELD_ATTRNAME)
 
         self._assertDatetimeEqual(inserted_value, updated_value)
 
@@ -194,13 +194,13 @@ class TestTimestampField(django.test.TransactionTestCase):
         update_only_model = update_only_class()
         update_only_model.save(using=alias)
         retrieved_model = update_only_class.objects.using(alias).get(id=update_only_model.id)
-        inserted_value = getattr(retrieved_model, test_utils.TS_FIELD_TEST_ATTRNAME)
+        inserted_value = getattr(retrieved_model, test_utils.TS_FIELD_ATTRNAME)
 
         # Update the same record and retrieve new auto current timestamp value from database.
-        setattr(update_only_model, test_utils.UPDATE_FIELD_TEST_ATTRNAME, 1)
+        setattr(update_only_model, test_utils.TS_UPDATE_FIELD_ATTRNAME, 1)
         update_only_model.save(using=alias)
         retrieved_model = update_only_class.objects.using(alias).get(id=update_only_model.id)
-        updated_value = getattr(retrieved_model, test_utils.TS_FIELD_TEST_ATTRNAME)
+        updated_value = getattr(retrieved_model, test_utils.TS_FIELD_ATTRNAME)
 
         self._assertDatetimeNotEqual(inserted_value, updated_value)
 
@@ -213,7 +213,7 @@ class TestTimestampField(django.test.TransactionTestCase):
         accurate DDL for the given field kwarg combination.
 
         """
-        for test_config in test_utils.TS_FIELD_TEST_CONFIGS:
+        for test_config in test_utils.TS_TEST_CONFIGS:
             test_field = django_forcedfields.TimestampField(**test_config.kwargs_dict)
             test_kwargs_string = ', '.join(test_config.kwargs_dict.keys())
             for alias, expected_output in test_config.db_type_dict.items():
@@ -305,7 +305,7 @@ class TestTimestampField(django.test.TransactionTestCase):
         Test that the values saved during INSERT operations are correct.
 
         """
-        for config in test_utils.TS_FIELD_TEST_CONFIGS:
+        for config in test_utils.TS_TEST_CONFIGS:
             test_model_class_name = test_utils.get_ts_model_class_name(**config.kwargs_dict)
             test_model_class = getattr(test_models, test_model_class_name)
             with self.subTest(test_model=test_model_class_name):
@@ -335,11 +335,11 @@ class TestTimestampField(django.test.TransactionTestCase):
 
         """
         test_model_class_name = test_utils.get_ts_model_class_name(
-            **test_utils.TS_FIELD_TEST_CONFIGS[0].kwargs_dict
+            **test_utils.TS_TEST_CONFIGS[0].kwargs_dict
         )
         test_model_class = getattr(test_models, test_model_class_name)
 
-        test_model_kwargs = {test_utils.TS_FIELD_TEST_ATTRNAME: 'invalid'}
+        test_model_kwargs = {test_utils.TS_FIELD_ATTRNAME: 'invalid'}
         test_model = test_model_class(**test_model_kwargs)
 
         self.assertRaises(
@@ -365,7 +365,7 @@ class TestTimestampField(django.test.TransactionTestCase):
 
         """
         test_model_class_name = test_utils.get_ts_model_class_name(
-            **test_utils.TS_FIELD_TEST_CONFIGS[2].kwargs_dict
+            **test_utils.TS_TEST_CONFIGS[2].kwargs_dict
         )
         test_model_class = getattr(test_models, test_model_class_name)
         connection = django.db.connections[test_utils.ALIAS_MYSQL]
@@ -411,7 +411,7 @@ class TestTimestampField(django.test.TransactionTestCase):
 
         """
         test_model_class_name = test_utils.get_ts_model_class_name(
-            **test_utils.TS_FIELD_TEST_CONFIGS[2].kwargs_dict
+            **test_utils.TS_TEST_CONFIGS[2].kwargs_dict
         )
         test_model_class = getattr(test_models, test_model_class_name)
         connection = django.db.connections[test_utils.ALIAS_POSTGRESQL]
@@ -463,7 +463,7 @@ class TestTimestampField(django.test.TransactionTestCase):
                 )
                 retrieved_value = getattr(
                     retrieved_model,
-                    test_utils.TS_FIELD_TEST_ATTRNAME
+                    test_utils.TS_FIELD_ATTRNAME
                 )
                 expected_value = datetime.datetime.now()
 
@@ -489,7 +489,7 @@ class TestTimestampField(django.test.TransactionTestCase):
 
         """
         test_model_class_name = test_utils.get_ts_model_class_name(
-            **test_utils.TS_FIELD_TEST_CONFIGS[2].kwargs_dict
+            **test_utils.TS_TEST_CONFIGS[2].kwargs_dict
         )
         test_model_class = getattr(test_models, test_model_class_name)
         connection = django.db.connections[test_utils.ALIAS_SQLITE]

@@ -58,8 +58,7 @@ def get_db_aliases():
     ]
 
 
-# Utilities to assist with timestamp field testing.
-class TimestampFieldTestConfig:
+class FieldTestConfig:
     """
     A simple class to help centralize and organize test configs.
 
@@ -98,11 +97,48 @@ class TimestampFieldTestConfig:
         self.insert_values_dict = insert_values_dict
 
 
-_DEFAULT_DATETIME = datetime.datetime.now().replace(microsecond=0)
-_DEFAULT_DATETIME_STR = str(_DEFAULT_DATETIME)
-TS_FIELD_TEST_ATTRNAME = 'ts_field_1'
-TS_FIELD_TEST_CONFIGS = [
-    TimestampFieldTestConfig(
+# Configurations for FixedCharField tests.
+FC_DEFAULT_VALUE = 'four'
+FC_DEFAULT_MAX_LENGTH = 4
+FC_FIELD_ATTRNAME = 'fc_field_1'
+FC_TEST_CONFIGS = [
+    FieldTestConfig(
+        kwargs_dict={'max_length': 4},
+        db_type_dict={
+            ALIAS_MYSQL: 'CHAR(4)',
+            ALIAS_POSTGRESQL: 'CHAR(4)',
+            ALIAS_SQLITE: 'CHAR(4)'
+        },
+        insert_values_dict={}
+    ),
+    FieldTestConfig(
+        kwargs_dict={'default': FC_DEFAULT_VALUE, 'max_length': FC_DEFAULT_MAX_LENGTH},
+        db_type_dict={
+            ALIAS_MYSQL: 'CHAR(4) DEFAULT \'{!s}\''.format(FC_DEFAULT_VALUE),
+            ALIAS_POSTGRESQL: 'CHAR(4) DEFAULT \'{!s}\''.format(FC_DEFAULT_VALUE),
+            ALIAS_SQLITE: 'CHAR(4) DEFAULT \'{!s}\''.format(FC_DEFAULT_VALUE)
+        },
+        insert_values_dict={}
+    ),
+    FieldTestConfig(
+        kwargs_dict={'default': None, 'max_length': FC_DEFAULT_MAX_LENGTH, 'null': True},
+        db_type_dict={
+            ALIAS_MYSQL: 'CHAR(4) DEFAULT NULL',
+            ALIAS_POSTGRESQL: 'CHAR(4) DEFAULT NULL',
+            ALIAS_SQLITE: 'CHAR(4) DEFAULT NULL'
+        },
+        insert_values_dict={}
+    )
+]
+FC_MODEL_CLASS_NAME_PREFIX = 'FCRecord'
+
+
+# Configurations for TimestampField tests.
+TS_DEFAULT_VALUE = datetime.datetime.now().replace(microsecond=0)
+TS_DEFAULT_VALUE_STR = str(TS_DEFAULT_VALUE)
+TS_FIELD_ATTRNAME = 'ts_field_1'
+TS_TEST_CONFIGS = [
+    FieldTestConfig(
         kwargs_dict={},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP',
@@ -112,10 +148,10 @@ TS_FIELD_TEST_CONFIGS = [
         insert_values_dict={
             django.db.models.NOT_PROVIDED: django.db.utils.IntegrityError,
             None: django.db.utils.IntegrityError,
-            _DEFAULT_DATETIME: _DEFAULT_DATETIME
+            TS_DEFAULT_VALUE: TS_DEFAULT_VALUE
         }
     ),
-    TimestampFieldTestConfig(
+    FieldTestConfig(
         kwargs_dict={'null': True},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP',
@@ -125,10 +161,10 @@ TS_FIELD_TEST_CONFIGS = [
         insert_values_dict={
             django.db.models.NOT_PROVIDED: None,
             None: None,
-            _DEFAULT_DATETIME: _DEFAULT_DATETIME
+            TS_DEFAULT_VALUE: TS_DEFAULT_VALUE
         }
     ),
-    TimestampFieldTestConfig(
+    FieldTestConfig(
         kwargs_dict={'auto_now': True},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
@@ -138,10 +174,10 @@ TS_FIELD_TEST_CONFIGS = [
         insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
-            _DEFAULT_DATETIME: datetime.datetime
+            TS_DEFAULT_VALUE: datetime.datetime
         }
     ),
-    TimestampFieldTestConfig(
+    FieldTestConfig(
         kwargs_dict={'auto_now': True, 'null': True},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
@@ -151,10 +187,10 @@ TS_FIELD_TEST_CONFIGS = [
         insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
-            _DEFAULT_DATETIME: datetime.datetime
+            TS_DEFAULT_VALUE: datetime.datetime
         }
     ),
-    TimestampFieldTestConfig(
+    FieldTestConfig(
         kwargs_dict={'auto_now_add': True},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
@@ -164,10 +200,10 @@ TS_FIELD_TEST_CONFIGS = [
         insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
-            _DEFAULT_DATETIME: datetime.datetime
+            TS_DEFAULT_VALUE: datetime.datetime
         }
     ),
-    TimestampFieldTestConfig(
+    FieldTestConfig(
         kwargs_dict={'auto_now_add': True, 'auto_now_update': True},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
@@ -177,10 +213,10 @@ TS_FIELD_TEST_CONFIGS = [
         insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
-            _DEFAULT_DATETIME: datetime.datetime
+            TS_DEFAULT_VALUE: datetime.datetime
         }
     ),
-    TimestampFieldTestConfig(
+    FieldTestConfig(
         kwargs_dict={'auto_now_add': True, 'auto_now_update': True, 'null': True},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
@@ -190,10 +226,10 @@ TS_FIELD_TEST_CONFIGS = [
         insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
-            _DEFAULT_DATETIME: datetime.datetime
+            TS_DEFAULT_VALUE: datetime.datetime
         }
     ),
-    TimestampFieldTestConfig(
+    FieldTestConfig(
         kwargs_dict={'auto_now_add': True, 'null': True},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
@@ -203,10 +239,10 @@ TS_FIELD_TEST_CONFIGS = [
         insert_values_dict={
             django.db.models.NOT_PROVIDED: datetime.datetime,
             None: datetime.datetime,
-            _DEFAULT_DATETIME: datetime.datetime
+            TS_DEFAULT_VALUE: datetime.datetime
         }
     ),
-    TimestampFieldTestConfig(
+    FieldTestConfig(
         kwargs_dict={'auto_now_update': True},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
@@ -216,10 +252,10 @@ TS_FIELD_TEST_CONFIGS = [
         insert_values_dict={
             django.db.models.NOT_PROVIDED: django.db.utils.IntegrityError,
             None: django.db.utils.IntegrityError,
-            _DEFAULT_DATETIME: _DEFAULT_DATETIME
+            TS_DEFAULT_VALUE: TS_DEFAULT_VALUE
         }
     ),
-    TimestampFieldTestConfig(
+    FieldTestConfig(
         kwargs_dict={'auto_now_update': True, 'null': True},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
@@ -229,74 +265,74 @@ TS_FIELD_TEST_CONFIGS = [
         insert_values_dict={
             django.db.models.NOT_PROVIDED: None,
             None: None,
-            _DEFAULT_DATETIME: _DEFAULT_DATETIME
+            TS_DEFAULT_VALUE: TS_DEFAULT_VALUE
         }
     ),
-    TimestampFieldTestConfig(
-        kwargs_dict={'auto_now_update': True, 'default': _DEFAULT_DATETIME},
+    FieldTestConfig(
+        kwargs_dict={'auto_now_update': True, 'default': TS_DEFAULT_VALUE},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP DEFAULT \'{!s}\' ON UPDATE CURRENT_TIMESTAMP'.format(
-                _DEFAULT_DATETIME_STR
+                TS_DEFAULT_VALUE_STR
             ),
             ALIAS_POSTGRESQL: 'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'{!s}\''.format(
-                _DEFAULT_DATETIME_STR
+                TS_DEFAULT_VALUE_STR
             ),
-            ALIAS_SQLITE: 'DATETIME DEFAULT \'{!s}\''.format(_DEFAULT_DATETIME)
+            ALIAS_SQLITE: 'DATETIME DEFAULT \'{!s}\''.format(TS_DEFAULT_VALUE_STR)
         },
         insert_values_dict={
-            django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
+            django.db.models.NOT_PROVIDED: TS_DEFAULT_VALUE,
             None: django.db.utils.IntegrityError,
-            _DEFAULT_DATETIME: _DEFAULT_DATETIME
+            TS_DEFAULT_VALUE: TS_DEFAULT_VALUE
         }
     ),
-    TimestampFieldTestConfig(
-        kwargs_dict={'auto_now_update': True, 'default': _DEFAULT_DATETIME, 'null': True},
+    FieldTestConfig(
+        kwargs_dict={'auto_now_update': True, 'default': TS_DEFAULT_VALUE, 'null': True},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP DEFAULT \'{!s}\' ON UPDATE CURRENT_TIMESTAMP'.format(
-                _DEFAULT_DATETIME_STR
+                TS_DEFAULT_VALUE_STR
             ),
             ALIAS_POSTGRESQL: 'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'{!s}\''.format(
-                _DEFAULT_DATETIME_STR
+                TS_DEFAULT_VALUE_STR
             ),
-            ALIAS_SQLITE: 'DATETIME DEFAULT \'{!s}\''.format(_DEFAULT_DATETIME)
+            ALIAS_SQLITE: 'DATETIME DEFAULT \'{!s}\''.format(TS_DEFAULT_VALUE_STR)
         },
         insert_values_dict={
-            django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
+            django.db.models.NOT_PROVIDED: TS_DEFAULT_VALUE,
             None: None,
-            _DEFAULT_DATETIME: _DEFAULT_DATETIME
+            TS_DEFAULT_VALUE: TS_DEFAULT_VALUE
         }
     ),
-    TimestampFieldTestConfig(
-        kwargs_dict={'default': _DEFAULT_DATETIME},
+    FieldTestConfig(
+        kwargs_dict={'default': TS_DEFAULT_VALUE},
         db_type_dict={
-            ALIAS_MYSQL: 'TIMESTAMP DEFAULT \'{!s}\''.format(_DEFAULT_DATETIME_STR),
+            ALIAS_MYSQL: 'TIMESTAMP DEFAULT \'{!s}\''.format(TS_DEFAULT_VALUE_STR),
             ALIAS_POSTGRESQL: 'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'{!s}\''.format(
-                _DEFAULT_DATETIME_STR
+                TS_DEFAULT_VALUE_STR
             ),
-            ALIAS_SQLITE: 'DATETIME DEFAULT \'{!s}\''.format(_DEFAULT_DATETIME)
+            ALIAS_SQLITE: 'DATETIME DEFAULT \'{!s}\''.format(TS_DEFAULT_VALUE_STR)
         },
         insert_values_dict={
-            django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
+            django.db.models.NOT_PROVIDED: TS_DEFAULT_VALUE,
             None: django.db.utils.IntegrityError,
-            _DEFAULT_DATETIME: _DEFAULT_DATETIME
+            TS_DEFAULT_VALUE: TS_DEFAULT_VALUE
         }
     ),
-    TimestampFieldTestConfig(
-        kwargs_dict={'default': _DEFAULT_DATETIME, 'null': True},
+    FieldTestConfig(
+        kwargs_dict={'default': TS_DEFAULT_VALUE, 'null': True},
         db_type_dict={
-            ALIAS_MYSQL: 'TIMESTAMP DEFAULT \'{!s}\''.format(_DEFAULT_DATETIME_STR),
+            ALIAS_MYSQL: 'TIMESTAMP DEFAULT \'{!s}\''.format(TS_DEFAULT_VALUE_STR),
             ALIAS_POSTGRESQL: 'TIMESTAMP WITHOUT TIME ZONE DEFAULT \'{!s}\''.format(
-                _DEFAULT_DATETIME_STR
+                TS_DEFAULT_VALUE_STR
             ),
-            ALIAS_SQLITE: 'DATETIME DEFAULT \'{!s}\''.format(_DEFAULT_DATETIME)
+            ALIAS_SQLITE: 'DATETIME DEFAULT \'{!s}\''.format(TS_DEFAULT_VALUE_STR)
         },
         insert_values_dict={
-            django.db.models.NOT_PROVIDED: _DEFAULT_DATETIME,
+            django.db.models.NOT_PROVIDED: TS_DEFAULT_VALUE,
             None: None,
-            _DEFAULT_DATETIME: _DEFAULT_DATETIME
+            TS_DEFAULT_VALUE: TS_DEFAULT_VALUE
         }
     ),
-    TimestampFieldTestConfig(
+    FieldTestConfig(
         kwargs_dict={'default': None, 'null': True},
         db_type_dict={
             ALIAS_MYSQL: 'TIMESTAMP DEFAULT NULL',
@@ -306,26 +342,28 @@ TS_FIELD_TEST_CONFIGS = [
         insert_values_dict={
             django.db.models.NOT_PROVIDED: None,
             None: None,
-            _DEFAULT_DATETIME: _DEFAULT_DATETIME
+            TS_DEFAULT_VALUE: TS_DEFAULT_VALUE
         }
     )
 ]
-UPDATE_FIELD_TEST_ATTRNAME = 'update_field_1'
+TS_MODEL_CLASS_NAME_PREFIX = 'TsRecord'
+TS_UPDATE_FIELD_ATTRNAME = 'update_field_1'
 
 
-def get_ts_model_class_name(**kwargs):
+def get_model_class_name(prefix, **kwargs):
     """
     Create a string for use as a dynamic class name.
 
     When testing all permutations of field keyword arguments in model classes, this function is used
     with the built-in function type() to dynamically generate the new model class' unique name.
-    Subsequently, this function is called by the test suites to detrministically return a specific
+    Subsequently, this function is called by the test suites to deterministically return a specific
     model class name based on desired field class configuration (kwargs). See sample usage of this
     function in the tests.models module.
 
     This algorithm is somewhat brittle. Not sure I like it.
 
     Args:
+        prefix (str): The class name prefix.
         kwargs: The keyword args that would be passed to the field in the test model class.
 
     See:
@@ -341,7 +379,29 @@ def get_ts_model_class_name(**kwargs):
             value_string =  re.sub(r'[\s:\-\.]', '', str(value)).title()
         kwargs_strings.append(key_string + value_string)
     suffix = ''.join(kwargs_strings)
-    return 'TsRecord' + suffix
+    return prefix + suffix
+
+
+def get_fc_model_class_name(**kwargs):
+    """
+    Generate the model class name for use in FixedCharField tests.
+
+    Returns:
+        str: The model class name.
+
+    """
+    return get_model_class_name(FC_MODEL_CLASS_NAME_PREFIX, **kwargs)
+
+
+def get_ts_model_class_name(**kwargs):
+    """
+    Generate the model class name for use in TimestampField tests.
+
+    Returns:
+        str: The model class name.
+
+    """
+    return get_model_class_name(TS_MODEL_CLASS_NAME_PREFIX, **kwargs)
 
 
 class TemporaryMigration:

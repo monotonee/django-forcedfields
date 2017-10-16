@@ -44,6 +44,9 @@ import django_forcedfields
 from . import utils as test_utils
 
 
+_THIS_MODULE = sys.modules[__name__]
+
+
 class FixedCharRecord(django.db.models.Model):
     """
     Contains an instance of the fixed char field.
@@ -54,13 +57,27 @@ class FixedCharRecord(django.db.models.Model):
     char_field_2 = django_forcedfields.FixedCharField(max_length=4, null=True)
 
 
-# Dynamically generate timestamp field test models.
-_THIS_MODULE = sys.modules[__name__]
-for config in test_utils.TS_FIELD_TEST_CONFIGS:
+# Dynamically generate FixedCharField test models.
+# "__module__" must be added to model class attributes because Django references it in db system
+#     somewhere. Failing to define __module__ in the model will produce a KeyError:
+#     File "/home/vagrant/.local/lib/python3.6/site-packages/django/db/models/base.py", line 93, in
+#     __new__ module = attrs.pop('__module__')
+for test_config in test_utils.FC_TEST_CONFIGS:
+    model_class_name = test_utils.get_fc_model_class_name(**test_config.kwargs_dict)
+    model_class_attributes = {
+        test_utils.FC_FIELD_ATTRNAME: django_forcedfields.FixedCharField(**test_config.kwargs_dict),
+        '__module__': __name__
+    }
+    model_class = type(model_class_name, (django.db.models.Model,), model_class_attributes)
+    setattr(_THIS_MODULE, model_class_name, model_class)
+
+
+# Dynamically generate TimestampField test models.
+for config in test_utils.TS_TEST_CONFIGS:
     test_model_class_name = test_utils.get_ts_model_class_name(**config.kwargs_dict)
     test_model_class_members = {
-        test_utils.TS_FIELD_TEST_ATTRNAME: django_forcedfields.TimestampField(**config.kwargs_dict),
-        test_utils.UPDATE_FIELD_TEST_ATTRNAME: django.db.models.SmallIntegerField(null=True),
+        test_utils.TS_FIELD_ATTRNAME: django_forcedfields.TimestampField(**config.kwargs_dict),
+        test_utils.TS_UPDATE_FIELD_ATTRNAME: django.db.models.SmallIntegerField(null=True),
         '__module__': __name__
     }
     test_model_class = type(
