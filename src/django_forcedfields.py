@@ -68,15 +68,65 @@ class FixedCharField(django.db.models.CharField):
 
     """
 
+    def _get_db_type_default_value(self, value, connection):
+        """
+        Generate a SQL DEFAULT clause value for use in a column DDL statement.
+
+        This is not intended to be universal to any model field class. "None" values will be
+        converted to NULL and all other values will be passed to the parent's get_prep_value() where
+        a valid datetime value will attempt to be parsed out.
+
+        Default values in Django's ORM are (sigh) usually applied in the application layer in a
+        model's __init__ method if no field value was explicitly defined in model's initial kwargs.
+        This method is responsible for creating a valid default value to be issued to a DB engine
+        in the column's DDL SQL. There is currently no need to differentiate DEFAULT values by DB
+        engine.
+
+        See:
+            https://docs.djangoproject.com/en/dev/ref/models/fields/#default
+
+        Args:
+            value: The desired value of the field class' "default" kwarg and instance attribute.
+            connection: The Django connection object that was passed to db_type().
+
+        Returns:
+            str: A valid SQL DEFAULT value usable in a column's DDL statement.
+
+        """
+        default_value = value
+
+        if value is None:
+            default_value = 'NULL'
+        else:
+            default_value = super().get_db_prep_value(value, connection, prepared=False)
+            default_value = "'{!s}'".format(default_value)
+
+        return default_value
+
     def db_type(self, connection):
         """
         Override db_type().
 
+        Remember that the parent CharField checks max_length for validity in the CharField.check()
+        method. If max_length is None or is not an integer, a check framework error is issued. It is
+        therefore unnecessary to test for max_length value validity.
+
         See:
             https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.Field.db_type
+            https://docs.djangoproject.com/en/dev/ref/checks/
+            https://github.com/django/django/blob/master/django/db/models/fields/__init__.py
 
         """
-        return 'CHAR({!s})'.format(self.max_length)
+        type_spec = []
+        db_type_format = 'CHAR({!s})'
+        db_type_default_format = 'DEFAULT {!s}'
+
+        type_spec.append(db_type_format.format(self.max_length))
+        if self.has_default():
+            default_value = self._get_db_type_default_value(self.get_default(), connection)
+            type_spec.append(db_type_default_format.format(default_value))
+
+        return ' '.join(type_spec)
 
 
 class TimestampField(django.db.models.DateTimeField):
