@@ -52,6 +52,7 @@ class TestFixedCharField(django.test.TestCase):
                     field = forcedfields.FixedCharField(**test_config.kwargs_dict)
                     returned_db_type = field.db_type(db_connection)
                     expected_db_type = test_config.db_type_dict[db_alias]
+
                     self.assertEqual(returned_db_type, expected_db_type)
 
     def test_max_length_validation(self):
@@ -113,7 +114,7 @@ class TestFixedCharField(django.test.TestCase):
                 LOWER(`DATA_TYPE`) AS `DATA_TYPE`,
                 LOWER(`IS_NULLABLE`) AS `IS_NULLABLE`,
                 LOWER(CAST(`COLUMN_DEFAULT` AS CHAR(32))) AS `COLUMN_DEFAULT`,
-                LOWER(`CHARACTER_MAXIMUM_LENGTH`) AS `CHARACTER_MAXIMUM_LENGTH`
+                `CHARACTER_MAXIMUM_LENGTH`
             FROM
                 `information_schema`.`COLUMNS`
             WHERE
@@ -134,11 +135,15 @@ class TestFixedCharField(django.test.TestCase):
         self.assertEqual(record[0], 'char')
         self.assertEqual(record[1], 'no')
         self.assertEqual(record[2], test_utils.FC_DEFAULT_VALUE)
-        self.assertEqual(record[3], str(test_utils.FC_DEFAULT_MAX_LENGTH))
+        self.assertEqual(record[3], test_utils.FC_DEFAULT_MAX_LENGTH)
 
     def test_postgresql_table_structure(self):
         """
         Test the creation of fixed char field in PostgreSQL.
+
+        Because all db_type method return values were tested in another test case, this method will
+        only run a cursory set of checks on the actual database table structure. This module is
+        supposed to test the custom field, not the underlying database.
 
         I attempted to use Django's database introspection classes but Django wraps all the
         resulting data in arbitrary classes and named tuples while omitting the raw field data type
@@ -163,10 +168,22 @@ class TestFixedCharField(django.test.TestCase):
             https://github.com/django/django/blob/master/django/db/backends/base/creation.py
 
         """
+        model_class_name = test_utils.get_fc_model_class_name(
+            default=test_utils.FC_DEFAULT_VALUE,
+            max_length=test_utils.FC_DEFAULT_MAX_LENGTH
+        )
+        model_class = getattr(test_models, model_class_name)
+        connection = django.db.connections[test_utils.ALIAS_POSTGRESQL]
+
+        # See: https://www.postgresql.org/docs/current/static/typeconv-query.html
+        expected_column_default = '\'{!s}\'::bpchar'.format(test_utils.FC_DEFAULT_VALUE)
+
         sql_string = """
             SELECT
-                data_type
-                ,character_maximum_length
+                LOWER(data_type) AS data_type,
+                LOWER(is_nullable) AS is_nullable,
+                LOWER(column_default) AS column_default,
+                character_maximum_length
             FROM
                 information_schema.columns
             WHERE
@@ -175,17 +192,20 @@ class TestFixedCharField(django.test.TestCase):
                 AND column_name = %s
         """
         sql_params = [
-            django.db.connections[test_utils.ALIAS_POSTGRESQL].settings_dict['NAME'],
-            self._test_table_name,
-            self._test_field_name
+            connection.settings_dict['NAME'],
+            model_class._meta.db_table,
+            model_class._meta.fields[1].get_attname_column()[1]
         ]
 
-        with django.db.connections[test_utils.ALIAS_POSTGRESQL].cursor() as cursor:
+        with connection.cursor() as cursor:
             cursor.execute(sql_string, sql_params)
             record = cursor.fetchone()
 
+
         self.assertEqual(record[0], 'character')
-        self.assertEqual(record[1], self._test_field_max_length)
+        self.assertEqual(record[1], 'no')
+        self.assertEqual(record[2], expected_column_default)
+        self.assertEqual(record[3], test_utils.FC_DEFAULT_MAX_LENGTH)
 
     def test_save(self):
         """
