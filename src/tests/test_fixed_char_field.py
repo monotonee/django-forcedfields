@@ -10,7 +10,7 @@ import django.core.exceptions
 import django.db
 import django.test
 
-import django_forcedfields
+import django_forcedfields as forcedfields
 from . import models as test_models
 from . import utils as test_utils
 
@@ -25,26 +25,37 @@ class TestFixedCharField(django.test.TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        """
+        Override django.test.TestCase.setUpTestData().
+
+        Not a member of TransactionTestCase.
+
+        """
         cls._db_aliases = test_utils.get_db_aliases()
         cls._test_table_name = test_models.FixedCharRecord._meta.db_table
         cls._test_field_name = test_models.FixedCharRecord._meta.fields[1].get_attname_column()[1]
-        cls._test_field_max_length = test_models.FixedCharRecord._meta.fields[1].max_length
+        cls._test_field_max_length = test_utils.FC_DEFAULT_MAX_LENGTH
 
     def test_db_type(self):
         """
         Test simple output of the field's overridden "db_type" method.
 
         """
-        test_field = django_forcedfields.FixedCharField(max_length=self._test_field_max_length)
-        expected_return_value = 'CHAR({!s})'.format(self._test_field_max_length)
-
-        for alias in self._db_aliases:
-            settings_dict = django.conf.settings.DATABASES[alias]
-            connection_mock = mock.NonCallableMock(settings_dict=settings_dict)
-            type_string = test_field.db_type(connection_mock)
-
-            with self.subTest(backend=settings_dict['ENGINE']):
-                self.assertEqual(type_string, expected_return_value)
+        for db_alias in self._db_aliases:
+            for test_config in test_utils.FC_TEST_CONFIGS:
+                db_connection = django.db.connections[db_alias]
+                db_backend = db_connection.settings_dict['ENGINE']
+                field_kwarg_format = '{key!s}={value!s}'
+                field_kwarg_string = ', '.join([
+                    field_kwarg_format.format(key=key, value=value)
+                    for key, value
+                    in test_config.kwargs_dict.items()
+                ])
+                with self.subTest(backend=db_backend, kwargs=field_kwarg_string):
+                    field = forcedfields.FixedCharField(**test_config.kwargs_dict)
+                    returned_db_type = field.db_type(db_connection)
+                    expected_db_type = test_config.db_type_dict[db_alias]
+                    self.assertEqual(returned_db_type, expected_db_type)
 
     def test_max_length_validation(self):
         """
