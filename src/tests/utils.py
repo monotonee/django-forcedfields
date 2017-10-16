@@ -109,7 +109,24 @@ FC_TEST_CONFIGS = [
             ALIAS_POSTGRESQL: 'CHAR(4)',
             ALIAS_SQLITE: 'CHAR(4)'
         },
-        insert_values_dict={}
+        insert_values_dict={
+            django.db.models.NOT_PROVIDED: django.db.utils.IntegrityError,
+            None: django.db.utils.IntegrityError,
+            FC_DEFAULT_VALUE: FC_DEFAULT_VALUE
+        }
+    ),
+    FieldTestConfig(
+        kwargs_dict={'max_length': FC_DEFAULT_MAX_LENGTH, 'null': True},
+        db_type_dict={
+            ALIAS_MYSQL: 'CHAR(4)',
+            ALIAS_POSTGRESQL: 'CHAR(4)',
+            ALIAS_SQLITE: 'CHAR(4)'
+        },
+        insert_values_dict={
+            django.db.models.NOT_PROVIDED: None,
+            None: None,
+            FC_DEFAULT_VALUE: FC_DEFAULT_VALUE
+        }
     ),
     FieldTestConfig(
         kwargs_dict={'default': FC_DEFAULT_VALUE, 'max_length': FC_DEFAULT_MAX_LENGTH},
@@ -118,7 +135,24 @@ FC_TEST_CONFIGS = [
             ALIAS_POSTGRESQL: 'CHAR(4) DEFAULT \'{!s}\''.format(FC_DEFAULT_VALUE),
             ALIAS_SQLITE: 'CHAR(4) DEFAULT \'{!s}\''.format(FC_DEFAULT_VALUE)
         },
-        insert_values_dict={}
+        insert_values_dict={
+            django.db.models.NOT_PROVIDED: FC_DEFAULT_VALUE,
+            None: django.db.utils.IntegrityError,
+            FC_DEFAULT_VALUE: FC_DEFAULT_VALUE
+        }
+    ),
+    FieldTestConfig(
+        kwargs_dict={'default': FC_DEFAULT_VALUE, 'max_length': FC_DEFAULT_MAX_LENGTH, 'null': True},
+        db_type_dict={
+            ALIAS_MYSQL: 'CHAR(4) DEFAULT \'{!s}\''.format(FC_DEFAULT_VALUE),
+            ALIAS_POSTGRESQL: 'CHAR(4) DEFAULT \'{!s}\''.format(FC_DEFAULT_VALUE),
+            ALIAS_SQLITE: 'CHAR(4) DEFAULT \'{!s}\''.format(FC_DEFAULT_VALUE)
+        },
+        insert_values_dict={
+            django.db.models.NOT_PROVIDED: FC_DEFAULT_VALUE,
+            None: None,
+            FC_DEFAULT_VALUE: FC_DEFAULT_VALUE
+        }
     ),
     FieldTestConfig(
         kwargs_dict={'default': None, 'max_length': FC_DEFAULT_MAX_LENGTH, 'null': True},
@@ -127,7 +161,11 @@ FC_TEST_CONFIGS = [
             ALIAS_POSTGRESQL: 'CHAR(4) DEFAULT NULL',
             ALIAS_SQLITE: 'CHAR(4) DEFAULT NULL'
         },
-        insert_values_dict={}
+        insert_values_dict={
+            django.db.models.NOT_PROVIDED: None,
+            None: None,
+            FC_DEFAULT_VALUE: FC_DEFAULT_VALUE
+        }
     )
 ]
 FC_MODEL_CLASS_NAME_PREFIX = 'FCRecord'
@@ -402,71 +440,3 @@ def get_ts_model_class_name(**kwargs):
 
     """
     return get_model_class_name(TS_MODEL_CLASS_NAME_PREFIX, **kwargs)
-
-
-class TemporaryMigration:
-    """
-    A context manager that handles the creation and destruction of a single model's temporary table.
-
-    Entering the context manager starts a migration of the passed model to a temporary table. The
-    table is destroyed on context block exit.
-
-    The table is created with the TEMPORARY SQL keyword. This class was created in an attempt to
-    counter the implicit transaction commits of DDL statements in MySQL/MariaDB. However, TEMPORARY
-    tables' structure cannot be queried or examined through the information_schema database which
-    breaks the database table structure tests. I could attempt to parse the output from a SHOW
-    CREATE statement but the investment-to-return ratio is currently unfavorable. See tests.models
-    module doc block for a more thorough explanation of why this class was created.
-
-    This functionality was defined as a context manager to ensure that the monkey-patching to
-    the SQL compiler is inevitably reversed.
-
-    Warning:
-        This class is no longer used in the tests. I'm saving this for future reference and until
-        I'm sure I won't need it. It also serves as a refresher for me on how the Django ORM
-        internals work. This solution strikes me as clever but smelly.
-
-    See:
-        https://docs.python.org/3/reference/compound_stmts.html#the-with-statement
-
-    """
-
-    sql_editor_kwargs = {'atomic': True}
-    sql_temporary = 'TEMPORARY'
-
-    def __init__(self, connection, model):
-        self._connection = connection
-        self._model = model
-
-    def __enter__(self):
-        """
-        Alter the ORM SQL compiler and migrate a model to a TEMPORARY table.
-
-        self._connection.features.can_rollback_ddl == False in MySQL
-
-        Note that BaseDatabaseSchemaEditor collect_sql = True bypasses actual execution and instead
-        stores generated SQL in a list. This could be useful.
-
-        See:
-            https://github.com/django/django/blob/master/django/db/backends/base/schema.py
-
-        """
-        with self._connection.schema_editor(**self.sql_editor_kwargs) as schema_editor:
-            schema_editor.sql_create_table = (
-                schema_editor.sql_create_table[:7]
-                + self.sql_temporary
-                + schema_editor.sql_create_table[6:]
-            )
-            schema_editor.create_model(self._model)
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """
-        Reverse ORM SQL compiler modifications and destroy the TEMPORARY table.
-
-        """
-        with self._connection.schema_editor(**self.sql_editor_kwargs) as schema_editor:
-            schema_editor.sql_create_table = schema_editor.sql_create_table.replace(
-                self.sql_temporary,
-                ''
-            )
-            schema_editor.delete_model(self._model)
