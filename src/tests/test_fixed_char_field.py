@@ -32,9 +32,6 @@ class TestFixedCharField(django.test.TestCase):
 
         """
         cls._db_aliases = test_utils.get_db_aliases()
-        cls._test_table_name = test_models.FixedCharRecord._meta.db_table
-        cls._test_field_name = test_models.FixedCharRecord._meta.fields[1].get_attname_column()[1]
-        cls._test_field_max_length = test_utils.FC_DEFAULT_MAX_LENGTH
 
     def test_db_type(self):
         """
@@ -76,6 +73,10 @@ class TestFixedCharField(django.test.TestCase):
         """
         Test the creation of fixed char field in MySQL/MariaDB.
 
+        Because all db_type method return values were tested in another test case, this method will
+        only run a cursory set of checks on the actual database table structure. This module is
+        supposed to test the custom field, not the underlying database.
+
         I attempted to use Django's database introspection classes but Django wraps all the
         resulting data in arbitrary classes and named tuples while omitting the raw field data type
         that I actually want. I finally opted to use raw SQL.
@@ -84,7 +85,8 @@ class TestFixedCharField(django.test.TestCase):
             connection = connections[alias]
             table_description = connection.introspection.get_table_description(
                 connection.cursor(),
-                test_table_name)
+                test_table_name
+            )
 
         See:
             https://github.com/django/django/blob/master/django/db/backends/base/introspection.py
@@ -99,10 +101,19 @@ class TestFixedCharField(django.test.TestCase):
             https://github.com/django/django/blob/master/django/db/backends/base/creation.py
 
         """
+        model_class_name = test_utils.get_fc_model_class_name(
+            default=test_utils.FC_DEFAULT_VALUE,
+            max_length=test_utils.FC_DEFAULT_MAX_LENGTH
+        )
+        model_class = getattr(test_models, model_class_name)
+        connection = django.db.connections[test_utils.ALIAS_MYSQL]
+
         sql_string = """
             SELECT
-                `DATA_TYPE`
-                ,`CHARACTER_MAXIMUM_LENGTH`
+                LOWER(`DATA_TYPE`) AS `DATA_TYPE`,
+                LOWER(`IS_NULLABLE`) AS `IS_NULLABLE`,
+                LOWER(CAST(`COLUMN_DEFAULT` AS CHAR(32))) AS `COLUMN_DEFAULT`,
+                LOWER(`CHARACTER_MAXIMUM_LENGTH`) AS `CHARACTER_MAXIMUM_LENGTH`
             FROM
                 `information_schema`.`COLUMNS`
             WHERE
@@ -111,17 +122,19 @@ class TestFixedCharField(django.test.TestCase):
                 AND `COLUMN_NAME` = %s
         """
         sql_params = [
-            django.db.connections[test_utils.ALIAS_MYSQL].settings_dict['NAME'],
-            self._test_table_name,
-            self._test_field_name
+            connection.settings_dict['NAME'],
+            model_class._meta.db_table,
+            model_class._meta.fields[1].get_attname_column()[1]
         ]
 
-        with django.db.connections[test_utils.ALIAS_MYSQL].cursor() as cursor:
+        with connection.cursor() as cursor:
             cursor.execute(sql_string, sql_params)
             record = cursor.fetchone()
 
         self.assertEqual(record[0], 'char')
-        self.assertEqual(record[1], self._test_field_max_length)
+        self.assertEqual(record[1], 'no')
+        self.assertEqual(record[2], test_utils.FC_DEFAULT_VALUE)
+        self.assertEqual(record[3], str(test_utils.FC_DEFAULT_MAX_LENGTH))
 
     def test_postgresql_table_structure(self):
         """
