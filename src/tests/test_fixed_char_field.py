@@ -39,9 +39,9 @@ class TestFixedCharField(django.test.TestCase):
 
         """
         for db_alias in self._db_aliases:
+            db_connection = django.db.connections[db_alias]
+            db_backend = db_connection.settings_dict['ENGINE']
             for test_config in test_utils.FC_TEST_CONFIGS:
-                db_connection = django.db.connections[db_alias]
-                db_backend = db_connection.settings_dict['ENGINE']
                 field_kwarg_format = '{key!s}={value!s}'
                 field_kwarg_string = ', '.join([
                     field_kwarg_format.format(key=key, value=value)
@@ -214,21 +214,28 @@ class TestFixedCharField(django.test.TestCase):
         overrides don't affect standard operations.
 
         """
-        test_value = 'four'
-        test_model = test_models.FixedCharRecord(char_field_1=test_value)
-        for alias in self._db_aliases:
-            engine = django.conf.settings.DATABASES[alias]['ENGINE']
+        expected_value = 'five'
+        model_class_name = test_utils.get_fc_model_class_name(
+            **test_utils.FC_TEST_CONFIGS[0].kwargs_dict
+        )
+        model_class = getattr(test_models, model_class_name)
+        model_kwargs = {test_utils.FC_FIELD_ATTRNAME: expected_value}
+        model = model_class(**model_kwargs)
 
-            with self.subTest(backend=engine):
-                test_model.save(using=alias)
-                result_record = test_models.FixedCharRecord.objects.using(alias).get(
-                    char_field_1=test_value
+        for db_alias in self._db_aliases:
+            db_backend = django.conf.settings.DATABASES[db_alias]['ENGINE']
+            with self.subTest(backend=db_backend):
+                model.save(using=db_alias)
+                result_record = model_class.objects.using(db_alias).get(**model_kwargs)
+
+                self.assertEqual(
+                    getattr(result_record, test_utils.FC_FIELD_ATTRNAME),
+                    expected_value
                 )
-                self.assertEqual(result_record.char_field_1, test_value)
 
     def test_save_null(self):
         """
-        Test that NULL is correctly saved when model field attribute is None.
+        Test that NULL or None is correctly saved when model field attribute is None.
 
         The Python database backend converts NULL values to None. The ORM appears to have no part
         in the value conversion. Therefore, a simple test for None is acceptable for now.
@@ -249,17 +256,20 @@ class TestFixedCharField(django.test.TestCase):
         overrides don't affect standard operations.
 
         """
-        test_value = 'four'
-        test_model = test_models.FixedCharRecord(char_field_1=test_value, char_field_2=None)
-        for alias in self._db_aliases:
-            engine = django.conf.settings.DATABASES[alias]['ENGINE']
+        model_class_name = test_utils.get_fc_model_class_name(
+            **test_utils.FC_TEST_CONFIGS[2].kwargs_dict
+        )
+        model_class = getattr(test_models, model_class_name)
+        model_kwargs = {test_utils.FC_FIELD_ATTRNAME: None}
+        model = model_class(**model_kwargs)
 
-            with self.subTest(backend=engine):
-                test_model.save(using=alias)
-                result_record = test_models.FixedCharRecord.objects.using(alias).get(
-                    char_field_1=test_value
-                )
-                self.assertEqual(result_record.char_field_2, None)
+        for db_alias in self._db_aliases:
+            db_backend = django.conf.settings.DATABASES[db_alias]['ENGINE']
+            with self.subTest(backend=db_backend):
+                model.save(using=db_alias)
+                result_record = model_class.objects.using(db_alias).get(**model_kwargs)
+
+                self.assertEqual(getattr(result_record, test_utils.FC_FIELD_ATTRNAME), None)
 
     def test_sqlite_table_structure(self):
         """

@@ -103,7 +103,7 @@ FC_DEFAULT_MAX_LENGTH = 4
 FC_FIELD_ATTRNAME = 'fc_field_1'
 FC_TEST_CONFIGS = [
     FieldTestConfig(
-        kwargs_dict={'max_length': 4},
+        kwargs_dict={'max_length': FC_DEFAULT_MAX_LENGTH},
         db_type_dict={
             ALIAS_MYSQL: 'CHAR(4)',
             ALIAS_POSTGRESQL: 'CHAR(4)',
