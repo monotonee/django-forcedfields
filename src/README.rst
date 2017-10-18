@@ -270,8 +270,6 @@ styles. A few notes on pylint:
 
     * Ignore most of these. Google style guide allows for a 4-space hanging indent with nothing on
       first line.
-    * Example: `line length
-      <https://google.github.io/styleguide/pyguide.html?showone=Line_length#Line_length>`_
     * Example: `indentation
       <https://google.github.io/styleguide/pyguide.html?showone=Indentation#Indentation>`_
 
