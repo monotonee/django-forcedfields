@@ -3,7 +3,9 @@ Tests of FixedCharField.
 
 """
 
-import unittest.mock as mock
+# Accessing models' _meta attribute violates pylint rule.
+# pylint: disable=protected-access
+
 
 import django.conf
 import django.core.exceptions
@@ -15,7 +17,7 @@ from . import models as test_models
 from . import utils as test_utils
 
 
-class TestFixedCharField(django.test.TestCase):
+class TestFixedCharField(django.test.TestCase, test_utils.FieldTestConfigUtilityMixin):
     """
     Defines tests for the fixed char field class.
 
@@ -38,16 +40,11 @@ class TestFixedCharField(django.test.TestCase):
         Test simple output of the field's overridden "db_type" method.
 
         """
-        for db_alias in self._db_aliases:
-            db_connection = django.db.connections[db_alias]
-            db_backend = db_connection.settings_dict['ENGINE']
-            for test_config in test_utils.FC_TEST_CONFIGS:
-                field_kwarg_format = '{key!s}={value!s}'
-                field_kwarg_string = ', '.join([
-                    field_kwarg_format.format(key=key, value=value)
-                    for key, value
-                    in test_config.kwargs_dict.items()
-                ])
+        for test_config in test_utils.FC_TEST_CONFIGS:
+            field_kwarg_string = test_utils.create_dict_string(test_config.kwargs_dict)
+            for db_alias in self._db_aliases:
+                db_connection = django.db.connections[db_alias]
+                db_backend = db_connection.settings_dict['ENGINE']
                 with self.subTest(backend=db_backend, kwargs=field_kwarg_string):
                     field = forcedfields.FixedCharField(**test_config.kwargs_dict)
                     returned_db_type = field.db_type(db_connection)
@@ -67,10 +64,82 @@ class TestFixedCharField(django.test.TestCase):
             Checks cover the field class arguments and configuration.
 
         """
-        test_model = test_models.FixedCharRecord(char_field_1='too many chars')
-        self.assertRaises(django.core.exceptions.ValidationError, test_model.full_clean)
+        model_class_name = test_utils.get_fc_model_class_name(
+            **test_utils.FC_TEST_CONFIGS[0].kwargs_dict
+        )
+        model_class = getattr(test_models, model_class_name)
+        model_kwargs = {test_utils.FC_FIELD_ATTRNAME: 'violate max_length'}
+        model = model_class(**model_kwargs)
 
-    def test_mysql_table_structure(self):
+        self.assertRaises(django.core.exceptions.ValidationError, model.full_clean)
+
+    def test_save(self):
+        """
+        Test that data is correctly saved through the field class.
+
+        Probably not strictly necessary but I want to ensure that the custom field class method
+        overrides don't affect standard operations.
+
+        """
+        expected_value = 'five'
+        model_class_name = test_utils.get_fc_model_class_name(
+            **test_utils.FC_TEST_CONFIGS[0].kwargs_dict
+        )
+        model_class = getattr(test_models, model_class_name)
+        model_kwargs = {test_utils.FC_FIELD_ATTRNAME: expected_value}
+        model = model_class(**model_kwargs)
+
+        for db_alias in self._db_aliases:
+            db_backend = django.conf.settings.DATABASES[db_alias]['ENGINE']
+            with self.subTest(backend=db_backend):
+                model.save(using=db_alias)
+                result_record = model_class.objects.using(db_alias).get(id=model.id)
+
+                self.assertEqual(
+                    getattr(result_record, test_utils.FC_FIELD_ATTRNAME),
+                    expected_value
+                )
+
+    def test_save_null(self):
+        """
+        Test that NULL or None is correctly saved when model field attribute is None.
+
+        The Python database backend converts value from NULL to None. The ORM appears to have no
+        part in the value conversion from the database. Therefore, simply testing for None in
+        SELECT query results is sufficient for now.
+
+        However, I did run a manual, one-time test to ascertain for certain if NULL was stored in
+        the database. After changing this TestCase to a TransactionTestCase to avoid per-test
+        transactions, I logged in to the MySQL server through the MySQL CLI and verified that the
+        ORM does insert a NULL value when passed an instance of Python's None.
+
+        In addition, I verified in the source code that the ORM updates fields with NULL values for
+        Python's None.
+
+        See:
+            https://github.com/django/django/blob/master/django/db/models/sql/compiler.py
+                django.db.models.sql.compiler.SQLUpdateCompiler.as_sql
+
+        This test is not strictly necessary but I want to ensure that the custom field class method
+        overrides don't affect standard operations.
+
+        """
+        model_class_name = test_utils.get_fc_model_class_name(
+            **test_utils.FC_TEST_CONFIGS[1].kwargs_dict
+        )
+        model_class = getattr(test_models, model_class_name)
+        model_kwargs = {test_utils.FC_FIELD_ATTRNAME: None}
+        model = model_class(**model_kwargs)
+
+        for db_alias in self._db_aliases:
+            db_backend = django.conf.settings.DATABASES[db_alias]['ENGINE']
+            with self.subTest(backend=db_backend):
+                model.save(using=db_alias)
+                result_record = model_class.objects.using(db_alias).get(id=model.id)
+
+                self.assertEqual(getattr(result_record, test_utils.FC_FIELD_ATTRNAME), None)
+
+    def test_table_structure_mysql(self):
         """
         Test the creation of fixed char field in MySQL/MariaDB.
 
@@ -103,8 +172,7 @@ class TestFixedCharField(django.test.TestCase):
 
         """
         model_class_name = test_utils.get_fc_model_class_name(
-            default=test_utils.FC_DEFAULT_VALUE,
-            max_length=test_utils.FC_DEFAULT_MAX_LENGTH
+            **test_utils.FC_TEST_CONFIGS[2].kwargs_dict
         )
         model_class = getattr(test_models, model_class_name)
         connection = django.db.connections[test_utils.ALIAS_MYSQL]
@@ -137,7 +205,7 @@ class TestFixedCharField(django.test.TestCase):
         self.assertEqual(record[2], test_utils.FC_DEFAULT_VALUE)
         self.assertEqual(record[3], test_utils.FC_DEFAULT_MAX_LENGTH)
 
-    def test_postgresql_table_structure(self):
+    def test_table_structure_postgresql(self):
         """
         Test the creation of fixed char field in PostgreSQL.
 
@@ -169,8 +237,7 @@ class TestFixedCharField(django.test.TestCase):
 
         """
         model_class_name = test_utils.get_fc_model_class_name(
-            default=test_utils.FC_DEFAULT_VALUE,
-            max_length=test_utils.FC_DEFAULT_MAX_LENGTH
+            **test_utils.FC_TEST_CONFIGS[2].kwargs_dict
         )
         model_class = getattr(test_models, model_class_name)
         connection = django.db.connections[test_utils.ALIAS_POSTGRESQL]
@@ -206,72 +273,7 @@ class TestFixedCharField(django.test.TestCase):
         self.assertEqual(record[2], expected_column_default)
         self.assertEqual(record[3], test_utils.FC_DEFAULT_MAX_LENGTH)
 
-    def test_save(self):
-        """
-        Test that data is correctly saved through the field class.
-
-        Probably not strictly necessary but I want to ensure that the custom field class method
-        overrides don't affect standard operations.
-
-        """
-        expected_value = 'five'
-        model_class_name = test_utils.get_fc_model_class_name(
-            **test_utils.FC_TEST_CONFIGS[0].kwargs_dict
-        )
-        model_class = getattr(test_models, model_class_name)
-        model_kwargs = {test_utils.FC_FIELD_ATTRNAME: expected_value}
-        model = model_class(**model_kwargs)
-
-        for db_alias in self._db_aliases:
-            db_backend = django.conf.settings.DATABASES[db_alias]['ENGINE']
-            with self.subTest(backend=db_backend):
-                model.save(using=db_alias)
-                result_record = model_class.objects.using(db_alias).get(**model_kwargs)
-
-                self.assertEqual(
-                    getattr(result_record, test_utils.FC_FIELD_ATTRNAME),
-                    expected_value
-                )
-
-    def test_save_null(self):
-        """
-        Test that NULL or None is correctly saved when model field attribute is None.
-
-        The Python database backend converts NULL values to None. The ORM appears to have no part
-        in the value conversion. Therefore, a simple test for None is acceptable for now.
-
-        As an aside, I did run a one-time test to ascertain for certain if NULL was stored in the
-        database. After changing this TestCase to a TransactionTestCase to avoid per-test
-        transactions, I logged in to the MySQL server through the MySQL CLI and verified that the
-        ORM does insert a NULL value when passed an instance of Python's None.
-
-        In addition, I verified in the source code that the ORM updates fields with NULL values for
-        Python's None.
-
-        See:
-            https://github.com/django/django/blob/master/django/db/models/sql/compiler.py
-                django.db.models.sql.compiler.SQLUpdateCompiler.as_sql
-
-        This test is not strictly necessary but I want to ensure that the custom field class method
-        overrides don't affect standard operations.
-
-        """
-        model_class_name = test_utils.get_fc_model_class_name(
-            **test_utils.FC_TEST_CONFIGS[2].kwargs_dict
-        )
-        model_class = getattr(test_models, model_class_name)
-        model_kwargs = {test_utils.FC_FIELD_ATTRNAME: None}
-        model = model_class(**model_kwargs)
-
-        for db_alias in self._db_aliases:
-            db_backend = django.conf.settings.DATABASES[db_alias]['ENGINE']
-            with self.subTest(backend=db_backend):
-                model.save(using=db_alias)
-                result_record = model_class.objects.using(db_alias).get(**model_kwargs)
-
-                self.assertEqual(getattr(result_record, test_utils.FC_FIELD_ATTRNAME), None)
-
-    def test_sqlite_table_structure(self):
+    def test_table_structure_sqlite(self):
         """
         Test correct DB table structures with sqlite3 backend.
 
@@ -292,8 +294,7 @@ class TestFixedCharField(django.test.TestCase):
 
         """
         model_class_name = test_utils.get_fc_model_class_name(
-            default=test_utils.FC_DEFAULT_VALUE,
-            max_length=test_utils.FC_DEFAULT_MAX_LENGTH
+            **test_utils.FC_TEST_CONFIGS[2].kwargs_dict
         )
         model_class = getattr(test_models, model_class_name)
         connection = django.db.connections[test_utils.ALIAS_SQLITE]

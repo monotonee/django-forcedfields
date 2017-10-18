@@ -34,6 +34,12 @@ See:
     https://github.com/django/django/blob/master/django/db/backends/base/schema.py
     https://docs.python.org/3/library/functions.html#type
 
+Note: The model class attribute "__module__" must be added to model class attributes because Django
+    references it in DB system somewhere. Failing to define __module__ in the model will produce a
+    KeyError:
+        File "/home/vagrant/.local/lib/python3.6/site-packages/django/db/models/base.py", line 93,
+        in __new__ module = attrs.pop('__module__')
+
 """
 
 import sys
@@ -47,21 +53,7 @@ from . import utils as test_utils
 _THIS_MODULE = sys.modules[__name__]
 
 
-class FixedCharRecord(django.db.models.Model):
-    """
-    Contains an instance of the fixed char field.
-
-    """
-
-    char_field_1 = django_forcedfields.FixedCharField(max_length=4)
-    char_field_2 = django_forcedfields.FixedCharField(max_length=4, null=True)
-
-
 # Dynamically generate FixedCharField test models.
-# "__module__" must be added to model class attributes because Django references it in db system
-#     somewhere. Failing to define __module__ in the model will produce a KeyError:
-#     File "/home/vagrant/.local/lib/python3.6/site-packages/django/db/models/base.py", line 93, in
-#     __new__ module = attrs.pop('__module__')
 for test_config in test_utils.FC_TEST_CONFIGS:
     model_class_name = test_utils.get_fc_model_class_name(**test_config.kwargs_dict)
     model_class_attributes = {
@@ -74,15 +66,11 @@ for test_config in test_utils.FC_TEST_CONFIGS:
 
 # Dynamically generate TimestampField test models.
 for config in test_utils.TS_TEST_CONFIGS:
-    test_model_class_name = test_utils.get_ts_model_class_name(**config.kwargs_dict)
-    test_model_class_members = {
+    model_class_name = test_utils.get_ts_model_class_name(**config.kwargs_dict)
+    model_class_attributes = {
         test_utils.TS_FIELD_ATTRNAME: django_forcedfields.TimestampField(**config.kwargs_dict),
         test_utils.TS_UPDATE_FIELD_ATTRNAME: django.db.models.SmallIntegerField(null=True),
         '__module__': __name__
     }
-    test_model_class = type(
-        test_model_class_name,
-        (django.db.models.Model,),
-        test_model_class_members
-    )
-    setattr(_THIS_MODULE, test_model_class_name, test_model_class)
+    model_class = type(model_class_name, (django.db.models.Model,), model_class_attributes)
+    setattr(_THIS_MODULE, model_class_name, model_class)
