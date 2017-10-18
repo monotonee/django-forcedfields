@@ -147,6 +147,33 @@ class TestTimestampField(django.test.TransactionTestCase, test_utils.FieldTestCo
 
         self._assert_datetime_not_equal(inserted_value, updated_value)
 
+    def test_automatic_datetime(self):
+        """
+        Test that the automatic timestamp value is the current datetime.
+
+        Due to latency in operations, high precision cannot be used when comparing inserted and
+        retrieved datetime values. Therefore, seconds and milliseconds are ignored and this test
+        only comapres dates, hours, and minutes.
+
+        """
+        for alias in test_utils.get_db_aliases():
+            engine = django.db.connections[alias].settings_dict['ENGINE']
+            with self.subTest(backend=engine):
+                test_model_class_name = test_utils.get_ts_model_class_name(auto_now_add=True)
+                test_model_class = getattr(test_models, test_model_class_name)
+                test_model = test_model_class()
+                test_model.save(using=alias)
+                retrieved_model = test_model_class.objects.using(alias).get(
+                    id=test_model.id
+                )
+                retrieved_value = getattr(
+                    retrieved_model,
+                    test_utils.TS_FIELD_ATTRNAME
+                )
+                expected_value = datetime.datetime.now()
+
+                self._assert_datetime_equal(retrieved_value, expected_value)
+
     def test_db_type(self):
         """
         Test output of the field's overridden "db_type" method.
@@ -304,7 +331,7 @@ class TestTimestampField(django.test.TransactionTestCase, test_utils.FieldTestCo
             using=test_utils.ALIAS_MYSQL
         )
 
-    def test_mysql_table_structure(self):
+    def test_table_structure_mysql(self):
         """
         Test correct DB table structures with MySQL backend.
 
@@ -354,7 +381,7 @@ class TestTimestampField(django.test.TransactionTestCase, test_utils.FieldTestCo
         self.assertTrue(record[2].startswith('current_timestamp'))
         self.assertTrue(record[3].startswith('on update current_timestamp'))
 
-    def test_postgresql_table_structure(self):
+    def test_table_structure_postgresql(self):
         """
         Test correct DB table structures with PostgreSQL backend.
 
@@ -398,34 +425,7 @@ class TestTimestampField(django.test.TransactionTestCase, test_utils.FieldTestCo
         self.assertEqual(record[1], 'no')
         self.assertEqual(record[2], 'current_timestamp')
 
-    def test_automatic_datetime(self):
-        """
-        Test that the automatic timestamp value is the current datetime.
-
-        Due to latency in operations, high precision cannot be used when comparing inserted and
-        retrieved datetime values. Therefore, seconds and milliseconds are ignored and this test
-        only comapres dates, hours, and minutes.
-
-        """
-        for alias in test_utils.get_db_aliases():
-            engine = django.db.connections[alias].settings_dict['ENGINE']
-            with self.subTest(backend=engine):
-                test_model_class_name = test_utils.get_ts_model_class_name(auto_now_add=True)
-                test_model_class = getattr(test_models, test_model_class_name)
-                test_model = test_model_class()
-                test_model.save(using=alias)
-                retrieved_model = test_model_class.objects.using(alias).get(
-                    id=test_model.id
-                )
-                retrieved_value = getattr(
-                    retrieved_model,
-                    test_utils.TS_FIELD_ATTRNAME
-                )
-                expected_value = datetime.datetime.now()
-
-                self._assert_datetime_equal(retrieved_value, expected_value)
-
-    def test_sqlite_table_structure(self):
+    def test_table_structure_sqlite(self):
         """
         Test correct DB table structures with sqlite3 backend.
 
