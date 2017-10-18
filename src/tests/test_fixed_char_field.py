@@ -3,6 +3,7 @@ Tests of FixedCharField.
 
 """
 
+
 # Accessing models' _meta attribute violates pylint rule.
 # pylint: disable=protected-access
 
@@ -17,23 +18,28 @@ from . import models as test_models
 from . import utils as test_utils
 
 
-class TestFixedCharField(django.test.TestCase, test_utils.FieldTestConfigUtilityMixin):
+class TestFixedCharField(django.test.TransactionTestCase, test_utils.FieldTestConfigUtilityMixin):
     """
     Defines tests for the fixed char field class.
+
+    This class inherits from TransactionTestCase so that I can test database-level exceptions
+    without causing a django.db.transaction.TransactionManagementError with message "You can't
+    execute queries until the end of the 'atomic' block." Database-level exceptions such as
+    django.db.utils.IntegrityError are intentionally raised and caught as a normal part of tests.
+    Unfortunately, the database error breaks the transactions in which django.test.TestCase wraps
+    its test methods, preventing any additional queries.
+
+    The TransactionManagementError was still thrown even when calling self.assertRaises and wrapping
+    that in its own, explicit transaction.atomic() block. One more ORM failure/complication.
+
+    See:
+        https://stackoverflow.com/a/23326971
+        https://stackoverflow.com/a/32206432
+        https://docs.djangoproject.com/en/dev/topics/testing/tools/#transactiontestcase
 
     """
 
     multi_db = True
-
-    @classmethod
-    def setUpTestData(cls):
-        """
-        Override django.test.TestCase.setUpTestData().
-
-        Not a member of TransactionTestCase.
-
-        """
-        cls._db_aliases = test_utils.get_db_aliases()
 
     def test_db_type(self):
         """
@@ -42,7 +48,7 @@ class TestFixedCharField(django.test.TestCase, test_utils.FieldTestConfigUtility
         """
         for test_config in test_utils.FC_TEST_CONFIGS:
             field_kwarg_string = test_utils.create_dict_string(test_config.kwargs_dict)
-            for db_alias in self._db_aliases:
+            for db_alias in test_utils.get_db_aliases():
                 db_connection = django.db.connections[db_alias]
                 db_backend = db_connection.settings_dict['ENGINE']
                 with self.subTest(backend=db_backend, kwargs=field_kwarg_string):
@@ -51,6 +57,31 @@ class TestFixedCharField(django.test.TestCase, test_utils.FieldTestConfigUtility
                     expected_db_type = test_config.db_type_dict[db_alias]
 
                     self.assertEqual(returned_db_type, expected_db_type)
+
+    def test_insert(self):
+        """
+        Test that insert operations produce expected results.
+
+        """
+        for test_config in test_utils.FC_TEST_CONFIGS:
+            kwargs_string = test_utils.create_dict_string(test_config.kwargs_dict)
+            model_class_name = test_utils.get_fc_model_class_name(**test_config.kwargs_dict)
+            model_class = getattr(test_models, model_class_name)
+            for insert_value, expected_value in test_config.insert_values_dict.items():
+                for db_alias in test_utils.get_db_aliases():
+                    db_backend = django.db.connections[db_alias].settings_dict['ENGINE']
+                    with self.subTest(
+                        backend=db_backend,
+                        kwargs=kwargs_string,
+                        insert_value=insert_value
+                    ):
+                        self._test_insert_dict(
+                            db_alias,
+                            model_class,
+                            test_utils.FC_FIELD_ATTRNAME,
+                            insert_value,
+                            expected_value
+                        )
 
     def test_max_length_validation(self):
         """
@@ -72,33 +103,6 @@ class TestFixedCharField(django.test.TestCase, test_utils.FieldTestConfigUtility
         model = model_class(**model_kwargs)
 
         self.assertRaises(django.core.exceptions.ValidationError, model.full_clean)
-
-    def test_save(self):
-        """
-        Test that data is correctly saved through the field class.
-
-        Probably not strictly necessary but I want to ensure that the custom field class method
-        overrides don't affect standard operations.
-
-        """
-        expected_value = 'five'
-        model_class_name = test_utils.get_fc_model_class_name(
-            **test_utils.FC_TEST_CONFIGS[0].kwargs_dict
-        )
-        model_class = getattr(test_models, model_class_name)
-        model_kwargs = {test_utils.FC_FIELD_ATTRNAME: expected_value}
-        model = model_class(**model_kwargs)
-
-        for db_alias in self._db_aliases:
-            db_backend = django.conf.settings.DATABASES[db_alias]['ENGINE']
-            with self.subTest(backend=db_backend):
-                model.save(using=db_alias)
-                result_record = model_class.objects.using(db_alias).get(id=model.id)
-
-                self.assertEqual(
-                    getattr(result_record, test_utils.FC_FIELD_ATTRNAME),
-                    expected_value
-                )
 
     def test_save_null(self):
         """
@@ -131,7 +135,7 @@ class TestFixedCharField(django.test.TestCase, test_utils.FieldTestConfigUtility
         model_kwargs = {test_utils.FC_FIELD_ATTRNAME: None}
         model = model_class(**model_kwargs)
 
-        for db_alias in self._db_aliases:
+        for db_alias in test_utils.get_db_aliases():
             db_backend = django.conf.settings.DATABASES[db_alias]['ENGINE']
             with self.subTest(backend=db_backend):
                 model.save(using=db_alias)

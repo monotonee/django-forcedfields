@@ -232,7 +232,14 @@ def get_ts_model_class_name(**kwargs):
 #######################
 # Test Configurations #
 #######################
+# Django ORM doesn't permit value omission for fields in insert/update and so attempts to insert
+# NULL when no value is provided for field on model (django.db.models.NOT_PROVIDED). This affects
+# expected results of insert operations, most commonly by failing to emit IntegrityError and
+# returning a None value instead.
+
 # Configurations for FixedCharField tests.
+# Note that empty string insert values are not tested. PostgreSQL returns an empty string of
+# max_length while MySQL and SQLite return an empty string.
 FC_DEFAULT_VALUE = 'four'
 FC_DEFAULT_MAX_LENGTH = 4
 FC_FIELD_ATTRNAME = 'fc_field_1'

@@ -3,6 +3,7 @@ Tests for TimestampField.
 
 """
 
+
 # Accessing models' _meta attribute violates pylint rule.
 # pylint: disable=protected-access
 
@@ -27,12 +28,18 @@ class TestTimestampField(django.test.TransactionTestCase, test_utils.FieldTestCo
     correct database field data type and parameters but cannot check for valid SQL beforehand.
 
     This class inherits from TransactionTestCase so that I can test database-level exceptions
-    without causing the "You can't execute queries until the end of the 'atomic' block." Django
-    exception message. This error was still thrown even when calling self.assertRaises and wrapping
+    without causing a django.db.transaction.TransactionManagementError with message "You can't
+    execute queries until the end of the 'atomic' block." Database-level exceptions such as
+    django.db.utils.IntegrityError are intentionally raised and caught as a normal part of tests.
+    Unfortunately, the database error breaks the transactions in which django.test.TestCase wraps
+    its test methods, preventing any additional queries.
+
+    The TransactionManagementError was still thrown even when calling self.assertRaises and wrapping
     that in its own, explicit transaction.atomic() block. One more ORM failure/complication.
 
     See:
-        http://stackoverflow.com/a/23326971
+        https://stackoverflow.com/a/23326971
+        https://stackoverflow.com/a/32206432
         https://docs.djangoproject.com/en/dev/topics/testing/tools/#transactiontestcase
 
     """
@@ -281,8 +288,9 @@ class TestTimestampField(django.test.TransactionTestCase, test_utils.FieldTestCo
             model_class = getattr(test_models, model_class_name)
             for insert_value, expected_value in test_config.insert_values_dict.items():
                 for db_alias in test_utils.get_db_aliases():
+                    db_backend = django.db.connections[db_alias].settings_dict['ENGINE']
                     with self.subTest(
-                        backend=db_alias,
+                        backend=db_backend,
                         kwargs=kwargs_string,
                         insert_value=insert_value
                     ):

@@ -52,8 +52,8 @@ See:
 
 import django.core.checks
 import django.db.models
-import django.db.models.functions
 import django.db.utils
+import django.utils.functional
 
 
 class FixedCharField(django.db.models.CharField):
@@ -66,7 +66,40 @@ class FixedCharField(django.db.models.CharField):
     CharField's max_length kwarg is kept for simplicity. In this class, the value of max_length will
     be the length of the char field.
 
+    If not given a value in a new model instance, a blank string will be inserted when Model.save()
+    is called. That behavior is completely incorrect. This class overrides that behavior and will
+    more correctly attempt to insert a NULL value.
+
+    The Django ORM either doesn't allow one to omit a value for a field during INSERT or I simply
+    have not yet figured out how to do it. The ORM seems to absolutely require and depend upon a
+    value for a field in a model at insert/update time, regardless of whether or not an explicit
+    "default" kwarg value was passed to the CharField's constructor or an explicit value was passed
+    for the field to the model instance's constructor.
+
+    Obviously, it would be best to omit a value altogether and let the underlying DB handle it
+    when no value and no default value is defined for the field in a model, but since that seems
+    impossible, the next best course of action is to insert a NULL value as it is semantically
+    congruent with unknown or absent data, unlike an empty string.
+
+    Note that DateTimeField and TimestampField do not have this empty string issue since
+    empty_strings_allowed = False on DateTimeField.
+
+    Despite its (bad, vague) name, empty_strings_allowed seems to only affect Field._get_default()
+    and does not seem to restrict field values in model definition or at runtime. It is still
+    possible to insert an empty string by providing the value to model instance's __init__() method
+    for the field and  by explicitly specifying an empty string for the field's "default" kwarg.
+
+    See:
+        https://github.com/django/django/search?utf8=✓&q=empty_strings_allowed
+        django.db.models.fields.__init__.Field._get_default()
+            https://github.com/django/django/blob/master/django/db/models/fields/__init__.py
+        django.db.backends.base.schema.BaseDatabaseSchemaEditor.effective_default()
+            https://github.com/django/django/blob/master/django/db/backends/base/schema.py
+            Not sure why this is defined. Seems to duplicate some functionality. Need to study it.
+
     """
+
+    empty_strings_allowed = False
 
     def _get_db_type_default_value(self, value, connection):
         """
@@ -84,6 +117,19 @@ class FixedCharField(django.db.models.CharField):
 
         See:
             https://docs.djangoproject.com/en/dev/ref/models/fields/#default
+
+        This may duplicate functionality that already exists in Django but that is never used by the
+        ORM. The capability exists in the SQL "schema editor" classes to output DEFAULT clauses in
+        DDL but it never seems to be called.
+
+        See:
+            django.db.backends.base.schema.BaseDatabaseSchemaEditor.column_sql()
+                https://github.com/django/django/blob/master/django/db/backends/base/schema.py
+            django.db.backends.base.schema.BaseDatabaseSchemaEditor.create_model
+                https://github.com/django/django/blob/master/django/db/backends/base/schema.py
+                include_default=True never used. Neither does it iseem to be used in specific
+                    backends (MySQL, PostgreSQL, etc.)
+            https://github.com/django/django/search?utf8=✓&q=include_default
 
         Args:
             value: The desired value of the field class' "default" kwarg and instance attribute.
@@ -358,6 +404,19 @@ class TimestampField(django.db.models.DateTimeField):
 
         See:
             https://docs.djangoproject.com/en/dev/ref/models/fields/#default
+
+        This may duplicate functionality that already exists in Django but that is never used by the
+        ORM. The capability exists in the SQL "schema editor" classes to output DEFAULT clauses in
+        DDL but it never seems to be called.
+
+        See:
+            django.db.backends.base.schema.BaseDatabaseSchemaEditor.column_sql()
+                https://github.com/django/django/blob/master/django/db/backends/base/schema.py
+            django.db.backends.base.schema.BaseDatabaseSchemaEditor.create_model
+                https://github.com/django/django/blob/master/django/db/backends/base/schema.py
+                include_default=True never used. Neither does it iseem to be used in specific
+                    backends (MySQL, PostgreSQL, etc.)
+            https://github.com/django/django/search?utf8=✓&q=include_default
 
         Note that the parent DateTimeField/DateField can raise validation errors in the model.save()
         call without having called full_clean(). ValidationErrors are raised in
