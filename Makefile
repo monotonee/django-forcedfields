@@ -15,7 +15,7 @@ postgresql_cli:
 	docker-compose exec postgresql psql -U tester
 
 lint:
-	pylint --rcfile=.pylintrc src/django_forcedfields.py
+	pylint --rcfile=.pylintrc src/django_forcedfields.py src/tests/*.py
 
 unit_tests:
 	python src/runtests.py

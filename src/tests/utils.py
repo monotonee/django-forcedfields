@@ -97,6 +97,141 @@ class FieldTestConfig:
         self.insert_values_dict = insert_values_dict
 
 
+class FieldTestConfigUtilityMixin:
+    """
+    A class desined to provide FieldTestConfig utility methods to test case classes.
+
+    The provided methods facilitate interaction between a Django/unittest test case instance and a
+    FieldTestConfig class.
+
+    These methods are defined in a mixin class so they can easily access Django's TestCase assertion
+    methods.
+
+    """
+
+    def _test_insert_dict(self, db_alias, model_class, model_attr, insert_value, expected_value):
+        """
+        Test INSERT and SELECT field attribute values from a FieldTestConfig.
+
+        Inserts the test values for the given model, selects the value from the database, and
+        compares the result with the expected value. Interprets the FieldTestCase.insert_values_dict
+        and runs assertions based on the type and value of the data retrieved from the database
+        after a successful insert.
+
+        Args:
+            db_alias (str): The string key under which a database configuration is defined. Usable in
+                django.conf.settings or directly through django.db.connections.
+            model_class (class): The class of the model that will issue the insert.
+            model_attr (str): The model attribute through which the test field may be accessed.
+            insert_value: The value to save in the new model instance's attribute.
+            expected_value: The value that is expected to be retrieved from the database after a
+                successful save() call.
+
+        """
+        if insert_value is django.db.models.NOT_PROVIDED:
+            model = model_class()
+        else:
+            model_kwargs = {model_attr: insert_value}
+            model = model_class(**model_kwargs)
+
+        class_expected = inspect.isclass(expected_value)
+        if class_expected and issubclass(expected_value, Exception):
+            self.assertRaises(expected_value, model.save, using=db_alias)
+        else:
+            model.save(using=db_alias)
+            retrieved_record_model = model_class.objects.using(db_alias).get(id=model.id)
+            retrieved_value = getattr(retrieved_record_model, model_attr)
+            if class_expected:
+                retrieved_value = retrieved_value.__class__
+
+            self.assertEqual(retrieved_value, expected_value)
+
+
+def create_dict_string(source_dict):
+    """
+    Create a string from a dictionary.
+
+    Generates a comma-delimited string of the dictionary's keys and values. Used for TestCase
+    subtests to output the Field kwargs used during the subtest iteration.
+
+    Example:
+        create_dict_string({'first': 0, 'second': 1})
+        >>> 'first=0, second=1'
+
+    Args:
+        source_dict (dict): The source dictionary.
+
+    Returns:
+        str: A comma-separated, string representation of the passed dictionary.
+
+    """
+    string_format = '{key!s}={value!s}'
+    dict_string = ', '.join([
+        string_format.format(key=key, value=value)
+        for key, value
+        in source_dict.items()
+    ])
+
+    return dict_string
+
+
+def get_model_class_name(prefix, **kwargs):
+    """
+    Create a string for use as a dynamic class name.
+
+    When testing all permutations of field keyword arguments in model classes, this function is used
+    with the built-in function type() to dynamically generate the new model class' unique name.
+    Subsequently, this function is called by the test suites to deterministically return a specific
+    model class name based on desired field class configuration (kwargs). See sample usage of this
+    function in the tests.models module.
+
+    This algorithm is somewhat brittle. Not sure I like it.
+
+    Args:
+        prefix (str): The class name prefix.
+        kwargs: The keyword args that would be passed to the field in the test model class.
+
+    See:
+        https://docs.python.org/3/library/functions.html#type
+
+    """
+    kwargs_strings = []
+    for key, value in kwargs.items():
+        key_string = str(key).replace('_', '').title()
+        if isinstance(value, datetime.datetime):
+            value_string = 'Datetime'
+        else:
+            value_string =  re.sub(r'[\s:\-\.]', '', str(value)).title()
+        kwargs_strings.append(key_string + value_string)
+    suffix = ''.join(kwargs_strings)
+    return prefix + suffix
+
+
+def get_fc_model_class_name(**kwargs):
+    """
+    Generate the model class name for use in FixedCharField tests.
+
+    Returns:
+        str: The model class name.
+
+    """
+    return get_model_class_name(FC_MODEL_CLASS_NAME_PREFIX, **kwargs)
+
+
+def get_ts_model_class_name(**kwargs):
+    """
+    Generate the model class name for use in TimestampField tests.
+
+    Returns:
+        str: The model class name.
+
+    """
+    return get_model_class_name(TS_MODEL_CLASS_NAME_PREFIX, **kwargs)
+
+
+#######################
+# Test Configurations #
+#######################
 # Configurations for FixedCharField tests.
 FC_DEFAULT_VALUE = 'four'
 FC_DEFAULT_MAX_LENGTH = 4
@@ -386,57 +521,3 @@ TS_TEST_CONFIGS = [
 ]
 TS_MODEL_CLASS_NAME_PREFIX = 'TsRecord'
 TS_UPDATE_FIELD_ATTRNAME = 'update_field_1'
-
-
-def get_model_class_name(prefix, **kwargs):
-    """
-    Create a string for use as a dynamic class name.
-
-    When testing all permutations of field keyword arguments in model classes, this function is used
-    with the built-in function type() to dynamically generate the new model class' unique name.
-    Subsequently, this function is called by the test suites to deterministically return a specific
-    model class name based on desired field class configuration (kwargs). See sample usage of this
-    function in the tests.models module.
-
-    This algorithm is somewhat brittle. Not sure I like it.
-
-    Args:
-        prefix (str): The class name prefix.
-        kwargs: The keyword args that would be passed to the field in the test model class.
-
-    See:
-        https://docs.python.org/3/library/functions.html#type
-
-    """
-    kwargs_strings = []
-    for key, value in kwargs.items():
-        key_string = str(key).replace('_', '').title()
-        if isinstance(value, datetime.datetime):
-            value_string = 'Datetime'
-        else:
-            value_string =  re.sub(r'[\s:\-\.]', '', str(value)).title()
-        kwargs_strings.append(key_string + value_string)
-    suffix = ''.join(kwargs_strings)
-    return prefix + suffix
-
-
-def get_fc_model_class_name(**kwargs):
-    """
-    Generate the model class name for use in FixedCharField tests.
-
-    Returns:
-        str: The model class name.
-
-    """
-    return get_model_class_name(FC_MODEL_CLASS_NAME_PREFIX, **kwargs)
-
-
-def get_ts_model_class_name(**kwargs):
-    """
-    Generate the model class name for use in TimestampField tests.
-
-    Returns:
-        str: The model class name.
-
-    """
-    return get_model_class_name(TS_MODEL_CLASS_NAME_PREFIX, **kwargs)
