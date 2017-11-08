@@ -299,8 +299,8 @@ on Oracle for a few reasons:
 Changelog
 *********
 
-v1.0.0
-======
+v1.0
+====
 
 * Automatic values from ``auto_now``, ``auto_now_add``, and ``auto_now_update`` are no longer
   generated in the application using ``datetime.datetime.now()`` or ``django.utils.timezone.now()``.
