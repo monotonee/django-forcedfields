@@ -56,71 +56,30 @@ import django.db.utils
 import django.utils.functional
 
 
-class FixedCharField(django.db.models.CharField):
+class ForcedfieldsDefaultValueMixin:
     """
-    A custom Django ORM field class that stores values in fixed-length "char" database fields.
-
-    Django's core CharField class saves all values in varchar data types with no option to use a
-    char data type instead.
-
-    CharField's max_length kwarg is kept for simplicity. In this class, the value of max_length will
-    be the length of the char field.
-
-    If not given a value in a new model instance, a blank string will be inserted when Model.save()
-    is called. That behavior is completely incorrect. This class overrides that behavior and will
-    more correctly attempt to insert a NULL value.
-
-    The Django ORM either doesn't allow one to omit a value for a field during INSERT or I simply
-    have not yet figured out how to do it. The ORM seems to absolutely require and depend upon a
-    value for a field in a model at insert/update time, regardless of whether or not an explicit
-    "default" kwarg value was passed to the CharField's constructor or an explicit value was passed
-    for the field to the model instance's constructor.
-
-    Obviously, it would be best to omit a value altogether and let the underlying DB handle it
-    when no value and no default value is defined for the field in a model, but since that seems
-    impossible, the next best course of action is to insert a NULL value as it is semantically
-    congruent with unknown or absent data, unlike an empty string.
-
-    Note that DateTimeField and TimestampField do not have this empty string issue since
-    empty_strings_allowed = False on DateTimeField.
-
-    Despite its (bad, vague) name, empty_strings_allowed seems to only affect Field._get_default()
-    and does not seem to restrict field values in model definition or at runtime. It is still
-    possible to insert an empty string by providing the value to model instance's __init__() method
-    for the field and  by explicitly specifying an empty string for the field's "default" kwarg.
-
-    See:
-        https://github.com/django/django/search?utf8=✓&q=empty_strings_allowed
-        django.db.models.fields.__init__.Field._get_default()
-            https://github.com/django/django/blob/master/django/db/models/fields/__init__.py
-        django.db.backends.base.schema.BaseDatabaseSchemaEditor.effective_default()
-            https://github.com/django/django/blob/master/django/db/backends/base/schema.py
-            Not sure why this is defined. Seems to duplicate some functionality. Need to study it.
+    A class that adds field functionality to generate values for SQL DEFAULT clauses.
 
     """
-
-    empty_strings_allowed = False
 
     def _get_db_type_default_value(self, value, connection):
         """
         Generate a SQL DEFAULT clause value for use in a column DDL statement.
 
-        This is not intended to be universal to any model field class. "None" values will be
-        converted to NULL and all other values will be passed to the parent's get_prep_value() where
-        a valid datetime value will attempt to be parsed out.
+        "None" values will be converted to NULL and all other values will be passed to the parent's
+        get_prep_value() where a SQL-ready prepared value will attempt to be generated.
 
         Default values in Django's ORM are (sigh) usually applied in the application layer in a
-        model's __init__ method if no field value was explicitly defined in model's initial kwargs.
-        This method is responsible for creating a valid default value to be issued to a DB engine
-        in the column's DDL SQL. There is currently no need to differentiate DEFAULT values by DB
-        engine.
+        model's __init__ method if no field value was explicitly defined in a model. This method is
+        responsible for creating a valid default value to be issued to a DB engine in the column's
+        DDL SQL.
 
         See:
             https://docs.djangoproject.com/en/dev/ref/models/fields/#default
 
         This may duplicate functionality that already exists in Django but that is never used by the
         ORM. The capability exists in the SQL "schema editor" classes to output DEFAULT clauses in
-        DDL but it never seems to be called.
+        DDL but it never seems to be actually enabled anywhere in the ORM.
 
         See:
             django.db.backends.base.schema.BaseDatabaseSchemaEditor.column_sql()
@@ -144,10 +103,69 @@ class FixedCharField(django.db.models.CharField):
         if value is None:
             default_value = 'NULL'
         else:
-            default_value = super().get_db_prep_value(value, connection, prepared=False)
+            # "self" points to mixin's subclass at runtime. One must explicitly define MRO for super
+            # and bind the method call to the subclass or an AttributeError is raised since by
+            # default super() attempts to use the MRO of the mixin class.
+            # "AttributeError: 'super' object has no attribute 'get_db_prep_value'"
+            #
+            # get_db_prep_value() is used instead of to_python() since DB-specific datetime formats
+            # are necessary for the DEFAULT clause value.
+            #
+            # In fields inheriting from DatetimeField, can raise ValidationError for invalid
+            # datetime values since its to_python() method is eventually called.
+            default_value = super(type(self), self).get_db_prep_value(
+                value,
+                connection,
+                prepared=False
+            )
             default_value = "'{!s}'".format(default_value)
 
         return default_value
+
+
+class FixedCharField(django.db.models.CharField, ForcedfieldsDefaultValueMixin):
+    """
+    A custom Django ORM field class that stores values in fixed-length "CHAR" database fields.
+
+    Django's core CharField class saves all values in VARCHAR data types with no option to use a
+    CHAR data type instead.
+
+    CharField's max_length kwarg is kept for simplicity. In this class, the value of max_length will
+    be the length of the CHAR field.
+
+    If the parent CharField is not given a value in a model instance, a blank string will be
+    inserted when Model.save() is called. That behavior is completely incorrect. This class
+    overrides that behavior and will more correctly attempt to insert a NULL value.
+
+    The Django ORM either doesn't allow one to omit a value for a field during INSERT or I simply
+    have not yet figured out how to do it. The ORM seems to absolutely require and depend upon a
+    value for a field in a model at insert/update time, regardless of whether or not an explicit
+    "default" kwarg value was passed to the CharField's constructor or an explicit value was defined
+    on the model's field attribute.
+
+    Obviously, it would be best to omit a value altogether and let the underlying DB handle it
+    when no value and no default value is defined for the field in a model. But, since that seems
+    impossible, the next best course of action is to insert a NULL value as it is semantically
+    congruent with unknown or absent data, unlike an empty string.
+
+    Despite its bad, vague name given its use in the Django ORM field classes, empty_strings_allowed
+    seems to only affect Field._get_default() and does not seem to restrict field values in model
+    definition or at runtime. It is still possible to insert an empty string by providing the value
+    to model instance's __init__() method for the field, assigning an empty string to a model's
+    field attribute, and by explicitly specifying an empty string for the field's "default" kwarg.
+
+    See:
+        https://github.com/django/django/search?utf8=✓&q=empty_strings_allowed
+        django.db.models.fields.__init__.Field._get_default()
+            https://github.com/django/django/blob/master/django/db/models/fields/__init__.py
+            "Designates whether empty strings fundamentally are allowed at the database level."
+        django.db.backends.base.schema.BaseDatabaseSchemaEditor.effective_default()
+            https://github.com/django/django/blob/master/django/db/backends/base/schema.py
+            Not sure why this is defined. Seems to duplicate some functionality. Need to study it.
+
+    """
+
+    empty_strings_allowed = False
 
     def db_type(self, connection):
         """
@@ -175,12 +193,12 @@ class FixedCharField(django.db.models.CharField):
         return ' '.join(type_spec)
 
 
-class TimestampField(django.db.models.DateTimeField):
+class TimestampField(django.db.models.DateTimeField, ForcedfieldsDefaultValueMixin):
     """
     A custom Django ORM field class designed for use as a timezone-free system timestamp field.
 
-    System timestamps are intended to record system-level events and moments in time. They
-    contribute to database and record metadata.
+    System timestamps are intended to record system-level events and timezone-independent moments in
+    time. They contribute to database and record metadata.
 
     See:
         http://stackoverflow.com/a/410458
@@ -387,81 +405,6 @@ class TimestampField(django.db.models.DateTimeField):
 
         return ' '.join(type_spec)
 
-    def _get_db_type_default_value(self, value, connection):
-        """
-        Generate a SQL DEFAULT clause value for use in a column DDL statement.
-
-        This is not intended to be universal to any model field class. Rather, it is only designed
-        to handle the use case of TIMESTAMP field types. "None" values will be converted to NULL and
-        all other values will be passed to the parent's get_prep_value() where a valid datetime
-        value will attempt to be parsed out.
-
-        Default values in Django's ORM are (sigh) usually applied in the application layer in a
-        model's __init__ method if no field value was explicitly defined in model's initial kwargs.
-        This method is responsible for creating a valid default value to be issued to a DB engine
-        in the column's DDL SQL. There is currently no need to differentiate DEFAULT values by DB
-        engine.
-
-        See:
-            https://docs.djangoproject.com/en/dev/ref/models/fields/#default
-
-        This may duplicate functionality that already exists in Django but that is never used by the
-        ORM. The capability exists in the SQL "schema editor" classes to output DEFAULT clauses in
-        DDL but it never seems to be called.
-
-        See:
-            django.db.backends.base.schema.BaseDatabaseSchemaEditor.column_sql()
-                https://github.com/django/django/blob/master/django/db/backends/base/schema.py
-            django.db.backends.base.schema.BaseDatabaseSchemaEditor.create_model
-                https://github.com/django/django/blob/master/django/db/backends/base/schema.py
-                include_default=True never used. Neither does it iseem to be used in specific
-                    backends (MySQL, PostgreSQL, etc.)
-            https://github.com/django/django/search?utf8=✓&q=include_default
-
-        Note that the parent DateTimeField/DateField can raise validation errors in the model.save()
-        call without having called full_clean(). ValidationErrors are raised in
-        DateTimeField.to_python() which is called by DateTimeField.get_prep_value() (on save) and by
-        the model's clean methods (full_clean(), etc.). Apparently, to_python() is the "first step
-        in every validation." Therefore, ValidationError may be raised from this method since it
-        calls the parent's get_db_prep_value() method which ultimately calls to_python() in the
-        attempt to parse a datetime value.
-
-        See:
-            https://docs.djangoproject.com/en/dev/ref/forms/validation/
-            https://docs.djangoproject.com/en/dev/ref/models/instances/#validating-objects
-            https://github.com/django/django/blob/master/django/utils/dateparse.py
-            https://github.com/django/django/blob/master/django/db/models/fields/__init__.py
-                django.db.models.fields.DateTimeField.get_prep_value()
-
-        Args:
-            value: The desired value of the field class' "default" kwarg and instance attribute.
-            connection: The Django connection object that was passed to db_type().
-
-        Returns:
-            str: A valid SQL DEFAULT value usable in a column's DDL statement.
-
-        Raises:
-            ValidationError: If the passed default value cannot be converted into a valid DDL value.
-
-        """
-        default_value_prepared = value
-
-        if value is None:
-            default_value_prepared = 'NULL'
-        else:
-            # Will raise ValidationError for invalid datetime values.
-            # Underlying django.utils.dateparse.parse_date() expects and requires a string.
-            # get_db_prep_value() is used instead of to_python() since DB-specific datetime formats
-            # are necessary for the DEFAULT clause value.
-            default_value_prepared = super().get_db_prep_value(
-                str(value),
-                connection,
-                prepared=False
-            )
-            default_value_prepared = "'{!s}'".format(default_value_prepared)
-
-        return default_value_prepared
-
     def db_type(self, connection):
         """
         Override the db_type method.
@@ -516,8 +459,8 @@ class TimestampField(django.db.models.DateTimeField):
         values override DEFAULT and ON UPDATE, but it remains consistent with parent DateTimeField
         behavior.
 
-        The model's attribute value will be set to a Django Func() expression when an auto_now*
-        condition is active. Given the common use cases of the auto_now* options, I deem this
+        The model's attribute value will be set to a Django Func() expression when an auto_now
+        conditions are active. Given the common use cases of the auto_now options, I deem this
         acceptable as historically, one would expect automatic timestamps to be generated in the
         database instead of the application.
 

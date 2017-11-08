@@ -53,6 +53,8 @@ class TestTimestampField(django.test.TransactionTestCase, test_utils.FieldTestCo
         This method does NOT compare any division of time smaller than a minute, i.e. seconds and
         milliseconds, if present, are not considered in equality.
 
+        This could also be implemented with datetime.replace() to zero out seconds and microseconds.
+
         Args:
             datetime_1 (datetime.datetime): The first (left) value to compare.
             datetime_2 (datetime.datetime): The second (right) value to compare.
