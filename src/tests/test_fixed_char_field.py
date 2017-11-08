@@ -8,7 +8,6 @@ Tests of FixedCharField.
 # pylint: disable=protected-access
 
 
-import django.conf
 import django.core.exceptions
 import django.db
 import django.test
@@ -136,7 +135,7 @@ class TestFixedCharField(django.test.TransactionTestCase, test_utils.FieldTestCo
         model = model_class(**model_kwargs)
 
         for db_alias in test_utils.get_db_aliases():
-            db_backend = django.conf.settings.DATABASES[db_alias]['ENGINE']
+            db_backend = django.db.connections[db_alias].settings_dict['ENGINE']
             with self.subTest(backend=db_backend):
                 model.save(using=db_alias)
                 result_record = model_class.objects.using(db_alias).get(id=model.id)

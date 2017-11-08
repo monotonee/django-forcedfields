@@ -94,10 +94,13 @@ comment=no
 notes=FIXME,XXX,TODO
 
 
+# duplicate-code disabled in Makefile due to poor implementation in Pylint and unresponsive Pylint
+# config options. Ex: doc blocks are NOT ignored, module-wide Pylint disable directives are NOT
+# ignored.
 [SIMILARITIES]
 
 # Minimum lines number of a similarity.
-min-similarity-lines=4
+min-similarity-lines=9
 
 # Ignore comments when computing similarities.
 ignore-comments=yes
@@ -106,7 +109,7 @@ ignore-comments=yes
 ignore-docstrings=yes
 
 # Ignore imports when computing similarities.
-ignore-imports=no
+ignore-imports=yes
 
 
 [BASIC]
@@ -229,7 +232,8 @@ additional-builtins=
 [DESIGN]
 
 # Maximum number of arguments for function / method
-max-args=5
+# Allowing "self" + 5.
+max-args=6
 
 # Argument names that match this expression will be ignored. Default to name
 # with leading underscore

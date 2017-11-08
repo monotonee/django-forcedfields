@@ -115,7 +115,7 @@ class DefaultValueMixin:
             #
             # In fields inheriting from DatetimeField, can raise ValidationError for invalid
             # datetime values since its to_python() method is eventually called.
-            default_value = super(type(self), self).get_db_prep_value(
+            default_value = super(type(self), self).get_db_prep_value( # pylint: disable=bad-super-call
                 value,
                 connection,
                 prepared=False

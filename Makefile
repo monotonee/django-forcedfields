@@ -14,8 +14,9 @@ mysql_cli:
 postgresql_cli:
 	docker-compose exec postgresql psql -U tester
 
+# duplicate-code disabled due to poor implementation in Pylint and unresponsive Pylint config options.
 lint:
-	pylint --rcfile=.pylintrc src/django_forcedfields.py src/tests/*.py
+	pylint --disable=duplicate-code --rcfile=.pylintrc src/django_forcedfields.py src/tests/*.py
 
 unit_tests:
 	python src/runtests.py

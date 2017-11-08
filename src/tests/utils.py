@@ -119,8 +119,8 @@ class FieldTestConfigUtilityMixin:
         after a successful insert.
 
         Args:
-            db_alias (str): The string key under which a database configuration is defined. Usable in
-                django.conf.settings or directly through django.db.connections.
+            db_alias (str): The string key under which a database configuration is defined. Usable
+                in django.conf.settings or directly through django.db.connections.
             model_class (class): The class of the model that will issue the insert.
             model_attr (str): The model attribute through which the test field may be accessed.
             insert_value: The value to save in the new model instance's attribute.
@@ -201,7 +201,7 @@ def get_model_class_name(prefix, **kwargs):
         if isinstance(value, datetime.datetime):
             value_string = 'Datetime'
         else:
-            value_string =  re.sub(r'[\s:\-\.]', '', str(value)).title()
+            value_string = re.sub(r'[\s:\-\.]', '', str(value)).title()
         kwargs_strings.append(key_string + value_string)
     suffix = ''.join(kwargs_strings)
     return prefix + suffix
@@ -284,7 +284,11 @@ FC_TEST_CONFIGS = [
         }
     ),
     FieldTestConfig(
-        kwargs_dict={'default': FC_DEFAULT_VALUE, 'max_length': FC_DEFAULT_MAX_LENGTH, 'null': True},
+        kwargs_dict={
+            'default': FC_DEFAULT_VALUE,
+            'max_length': FC_DEFAULT_MAX_LENGTH,
+            'null': True
+        },
         db_type_dict={
             ALIAS_MYSQL: 'CHAR(4) DEFAULT \'{!s}\''.format(FC_DEFAULT_VALUE),
             ALIAS_POSTGRESQL: 'CHAR(4) DEFAULT \'{!s}\''.format(FC_DEFAULT_VALUE),
