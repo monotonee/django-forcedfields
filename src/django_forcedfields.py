@@ -56,7 +56,7 @@ import django.db.utils
 import django.utils.functional
 
 
-class ForcedfieldsDefaultValueMixin:
+class DefaultValueMixin:
     """
     A class that adds field functionality to generate values for SQL DEFAULT clauses.
 
@@ -103,10 +103,12 @@ class ForcedfieldsDefaultValueMixin:
         if value is None:
             default_value = 'NULL'
         else:
-            # "self" points to mixin's subclass at runtime. One must explicitly define MRO for super
-            # and bind the method call to the subclass or an AttributeError is raised since by
-            # default super() attempts to use the MRO of the mixin class.
-            # "AttributeError: 'super' object has no attribute 'get_db_prep_value'"
+            # Using type(self) with super() to start the search for get_db_prep_value() at the
+            # inheriting field class in the field class' MRO instead of at this mixin. Using the
+            # zero-argument form of super() would start the search in the MRO at this mixin,
+            # requiring that this mixin class be listed first in the list of parent classes of the
+            # field classes. Since that seems more brittle and implicit so I'm going to see how
+            # type(self) works in the long run instead.
             #
             # get_db_prep_value() is used instead of to_python() since DB-specific datetime formats
             # are necessary for the DEFAULT clause value.
@@ -123,7 +125,7 @@ class ForcedfieldsDefaultValueMixin:
         return default_value
 
 
-class FixedCharField(django.db.models.CharField, ForcedfieldsDefaultValueMixin):
+class FixedCharField(django.db.models.CharField, DefaultValueMixin):
     """
     A custom Django ORM field class that stores values in fixed-length "CHAR" database fields.
 
@@ -193,7 +195,7 @@ class FixedCharField(django.db.models.CharField, ForcedfieldsDefaultValueMixin):
         return ' '.join(type_spec)
 
 
-class TimestampField(django.db.models.DateTimeField, ForcedfieldsDefaultValueMixin):
+class TimestampField(django.db.models.DateTimeField, DefaultValueMixin):
     """
     A custom Django ORM field class designed for use as a timezone-free system timestamp field.
 
