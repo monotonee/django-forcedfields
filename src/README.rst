@@ -70,16 +70,19 @@ This field extends Django's `CharField
 This field inherits all functionality and interfaces from Django's standard CharField but, rather
 than producing a ``VARCHAR`` field in the database, the FixedCharField creates a ``CHAR`` field. The
 parent CharField class' keyword argument ``max_length`` is retained and, when passed, specifies the
-``CHAR`` field's max length just like it does for the ``VARCHAR`` implementation.
+``CHAR`` field's max length just like it does for the ``VARCHAR`` implementation. The ``CHAR`` data
+type is supported on all RDBMS in common use with Django.
 
-The ``CHAR`` field is supported on all RDBMS in common use with Django.
-
-The current implementation of the FixedCharField does not output complete DDL. Future development
-will add the ``DEFAULT`` modifier clause when necessary.
+In addition, if a FixedCharField on a model is not given an explicit value and no default field
+value has been explicitly defined, a ``NULL`` value will be inserted on Model.save(). This is in
+contrast to Django's standard CharField which incorrectly attempts to insert an empty string in such
+a case. Ideally, with no explicit value and no default value, an integrity error would be raised by
+the database but Django's ORM absolutely requires a value for all fields in ``INSERT`` operations.
+It is impossible to simply omit a database column's value in an ``INSERT`` statement.
 
 A note here on Django's `admonition on null values with text fields
 <https://docs.djangoproject.com/en/dev/ref/models/fields/#null>`_: Django is wrong. ``NULL`` means
-unknown data, an empty string means an empty string. Their meanings are semantically different by
+unknown data, an empty string means an empty string. Their meanings are *semantically different* by
 definition. Set ``null=True`` on text fields when your use case warrants it. That is, when you may
 have a complete absence of data as well as the need to record an empty string. Google this topic
 for more analysis.
@@ -304,11 +307,17 @@ v1.0.0
   ``CURRENT_TIMESTAMP`` generation is now performed by the database using the Django database
   function `django.db.models.functions.Now
   <https://docs.djangoproject.com/en/dev/ref/models/database-functions/#now>`_.
+* All fields now cause the ORM to issue explicit ``DEFAULT`` clauses in column DDL statements where
+  previously the ORM always omitted ``DEFAULT`` clauses from column definitions. ``DEFAULT`` clauses
+  will be defined in DDL if Field.has_default() returns True. This behavior naturally includes the
+  generation of ``DEFAULT NULL`` in the column DDL if the field's ``default`` option is set
+  to ``None``.
 * If no kwargs (options) are passed to TimestampField, no ``DEFAULT`` clause is generated in the
   column DDL for MySQL. Previously, a ``DEFAULT NULL`` or ``DEFAULT 0`` clause was output in the DDL
   to disable MySQL's default ``TIMESTAMP`` behavior. Howver, default ``TIMESTAMP`` behavior varies
   according to certain server system variables and, depending upon configuration, it may be
   completely valid to omit a ``DEFAULT`` clause altogether.
-* It is now possible to generate ``DEFAULT NULL`` in the TimestampField column DDL if
-  the field's ``default`` option is set to ``None``. ``DEFAULT`` value support has been made more
-  robust in general.
+* FixedCharField will now attempt to insert ``NULL`` if no value is defined on the model's field
+  attribute and no explicit field default value has been defined. This behavior is in contrast to
+  Django's standard CharField which always attempts to (incorrectly) store an empty string in such a
+  case.
