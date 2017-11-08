@@ -1,4 +1,3 @@
-Add support for CHAR DEFAULT clause.
 Make note in README that MariaDB places parenthesis after functions in information_schema?
     Alternately, normalize table schema tests by stripping parentheses.
     ======================================================================
@@ -11,3 +10,40 @@ Make note in README that MariaDB places parenthesis after functions in informati
     - current_timestamp
     + current_timestamp()
     ?                  ++
+
+
+# Done in README.rst. Left here temporarily for reference in future work.
+# Make note in readme about ORM behavior departing from that of underlying DB.
+    TimestampField example:
+        insert_values_dict={
+            django.db.models.NOT_PROVIDED: None,
+        }
+        Attempting to save() model with field value django.db.models.NOT_PROVIDED should result in
+            "field has no default" DB error but ORM does not allow value omission in write
+            operations and will return empty string or None from Field._get_default, resulting in
+            NULL insert. This behavior can be observed throughout ORM with many fields.
+
+            Essentially, the generated SQL absolutely MUST have a value in the VALUES clause of an
+            INSERT statement.
+
+
+Add support for difference between DB engines in the FieldTestConfig.insert_values_dict tests.
+    Use dict or allow expected values to be callables.
+    Could simply trim all retrieved values insert_values_dict test method but this seems like it
+        could introduce unexpected behavior in the future. I prefer to only use raw values.
+    Example of the problem:
+        When selecting a previously inserted empty string value in a CHAR field, PostgreSQL returns
+        an empty string padded to max_length while MySQL and SQLite return an empty string.
+Add FieldTestConfig.insert_values_dict empty string values.
+    Test setting field value in constructor and by explicit setting model attribute.
+    This cannot be maintainably accomplished until the above item is implemented.
+
+
+Research possibility of using built-in DEFAULT clause generation for DDL instead of manual method.
+    https://github.com/django/django/search?utf8=✓&q=include_default
+    django.db.backends.base.schema.BaseDatabaseSchemaEditor.column_sql()
+        https://github.com/django/django/blob/master/django/db/backends/base/schema.py
+    django.db.backends.base.schema.BaseDatabaseSchemaEditor.create_model
+        https://github.com/django/django/blob/master/django/db/backends/base/schema.py
+        include_default=True never used. Neither does it iseem to be used in specific backends (
+            MySQL, PostgreSQL, etc.)
