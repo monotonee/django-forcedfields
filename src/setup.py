@@ -4,7 +4,7 @@ Note that include_package_data enables MANIFEST.in consumption.
 See:
     https://setuptools.readthedocs.io/en/latest/setuptools.html#including-data-files
 
-Using semantic verisioning.
+Using semantic versioning.
 
 See:
     https://www.python.org/dev/peps/pep-0440/#public-version-identifiers
@@ -15,16 +15,18 @@ See:
 import os
 from setuptools import find_packages, setup
 
+
 with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as readme:
     README = readme.read()
 
+
 setup(
     name='django-forcedfields',
-    version='0.1.1',
+    version='1.0.0',
 
     author='monotonee',
     author_email='monotonee@tuta.io',
-    include_package_data=True,
+    include_package_data=True, # Parses MANIFEST.in
     install_requires=[
         'django'
     ],
@@ -34,7 +36,7 @@ setup(
     url='https://github.com/monotonee/django-forcedfields',
 
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Framework :: Django',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
@@ -43,8 +45,8 @@ setup(
         'Topic :: Database'
     ],
     description=(
-        'Django model fields designed to more precisely define data types in '
-        'database fields.'),
+        'Django model fields designed to more precisely and semantically define data types.'
+    ),
     keywords='char database django field model timestamp',
     long_description=README
 )
