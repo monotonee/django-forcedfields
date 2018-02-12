@@ -116,7 +116,7 @@ done
 # Project-specific tasks
 echo 'TASK: Install Python packages and modules.'
 cd ${src_dir}
-su ${default_user} -c 'cd src && pip install --user -e .[dev]'
+su ${default_user} -c 'make dependencies'
 
 # Reboot system.
 # Actual reboot removed for now since rebooting outside of Vagrant's control

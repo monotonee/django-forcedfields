@@ -1,9 +1,14 @@
-.PHONY: build lint mariadb_cli mysql_cli postgresql_cli tests unit_tests tests
+# A simple Makefile for use in development.
+
+.PHONY: build dependencies lint mariadb_cli mysql_cli postgresql_cli tests unit_tests
 
 build:
 	cd src && \
 	python setup.py sdist && \
 	python setup.py bdist_wheel
+
+dependencies:
+	pip install --user -e ./src[dev]
 
 mariadb_cli:
 	docker-compose exec mariadb mysql
