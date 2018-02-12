@@ -38,6 +38,12 @@ Add FieldTestConfig.insert_values_dict empty string values.
     Test setting field value in constructor and by explicit setting model attribute.
     This cannot be maintainably accomplished until the above item is implemented.
 
+Add separate tests for sets of stable database releases.
+    For example: test MariaDB 10.1, 10.2, 10.3, etc.
+    Add image "badges" to readme.
+        Display latest test result on each database engine and version.
+        Display latest test result on supported Django major releases.
+    Implement using separate branches, each with different CI build script?
 
 Research possibility of using built-in DEFAULT clause generation for DDL instead of manual method.
     https://github.com/django/django/search?utf8=✓&q=include_default
