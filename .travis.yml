@@ -15,7 +15,7 @@ before_install:
     # Latest docker-compose is a dev dependency and is installed from PyPI in the install phase.
     - sudo rm /usr/local/bin/docker-compose
 install:
-    - make dependencies
+    - pip install -e ./src[dev]
 before_script:
     - docker-compose up -d
 script:
