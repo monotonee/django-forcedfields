@@ -1,0 +1,22 @@
+# Run Docker containers for database services to avoid unnecessary complication when trying to use
+# latest stable versions of each engine. Travis CI and/or its underlying infrastructure provider
+# (currently AWS) doesn't support latest stable versions of most database engines.
+# https://docs.travis-ci.com/user/docker/
+language: python
+python:
+    - "3.6"
+addons:
+  apt:
+    packages:
+      - docker-ce
+services:
+    - docker
+before_install:
+    # Latest docker-compose is a dev dependency and is installed from PyPI in the install phase.
+    - sudo rm /usr/local/bin/docker-compose
+install:
+    - make dependencies
+before_script:
+    - docker-compose up -d
+script:
+    - make tests

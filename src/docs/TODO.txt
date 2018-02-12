@@ -44,6 +44,15 @@ Add separate tests for sets of stable database releases.
         Display latest test result on each database engine and version.
         Display latest test result on supported Django major releases.
     Implement using separate branches, each with different CI build script?
+    Use Travis CI build matrix.
+    Since tests iterate over settings DATABASE keys, add function in settings that checks for
+        environment variables and will only add database keys that are "enabled." This, in
+        combination with Travis, will allow the configuration of multiple tests against database
+        engines and versions either one at a time or in sets. A maximum of one version of a given DB
+        engine will be able to be tested in a given test iteration, however.
+        https://docs.travis-ci.com/user/database-setup/#Multiple-Database-Builds
+    Alternately, use Docker-enabled image?
+        https://docs.travis-ci.com/user/docker/
 
 Research possibility of using built-in DEFAULT clause generation for DDL instead of manual method.
     https://github.com/django/django/search?utf8=✓&q=include_default
