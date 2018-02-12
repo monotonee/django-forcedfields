@@ -19,6 +19,6 @@ lint:
 	pylint --disable=duplicate-code --rcfile=.pylintrc src/django_forcedfields.py src/tests/*.py
 
 unit_tests:
-	python src/runtests.py
+	python src/manage.py test --verbosity 2
 
 tests: unit_tests lint
