@@ -1,8 +1,0 @@
--e .
-
-django
-mysqlclient
-psycopg2
-pylint
-twine
-wheel

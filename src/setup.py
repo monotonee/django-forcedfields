@@ -30,6 +30,15 @@ setup(
     install_requires=[
         'django'
     ],
+    extras_require={
+        'dev': [
+            'mysqlclient',
+            'psycopg2-binary',
+            'pylint',
+            'twine',
+            'wheel'
+        ]
+    },
     license='MIT',
     packages=find_packages(exclude=('tests',)),
     py_modules=['django_forcedfields'],
