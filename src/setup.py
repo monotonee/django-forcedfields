@@ -32,6 +32,7 @@ setup(
     ],
     extras_require={
         'dev': [
+            'docker-compose',
             'mysqlclient',
             'psycopg2-binary',
             'pylint',

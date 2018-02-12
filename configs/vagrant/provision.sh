@@ -49,7 +49,7 @@ mkinitcpio -p linux
 # See: https://www.archlinux.org/packages/community/x86_64/virtualbox-guest-dkms/
 # This box is designed for X11 forwarding. libxtst is used for squirrel-sql.
 echo 'TASK: Installing explicit packages'
-packages=( docker docker-compose git linux-headers tree ${extra_pkgs[@]} )
+packages=( docker git linux-headers tree ${extra_pkgs[@]} )
 pacman -Qiq ${packages[@]} 1> /dev/null || pacman -S ${packages[@]} --noconfirm --quiet --needed
 
 # Configure git

@@ -1,7 +1,7 @@
 ---
 # DO NOT USE IN PRODUCTION.
-# Docker Compose file to create a MariaDB database instance FOR TESTING ONLY. Sensitive settings are
-# saved in plain text here and service configurations favor convenience over security.
+# Docker Compose file to create a database instances FOR TESTING ONLY. Sensitive settings are saved
+# in plain text here and service configurations favor convenience over security.
 # DO NOT USE IN PRODUCTION.
 #
 # Recall that MYSQL_ALLOW_EMPTY_PASSWORD allows empty password for root user.
