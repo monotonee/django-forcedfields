@@ -17,6 +17,8 @@ before_install:
 install:
     - pip install -e ./src[dev]
 before_script:
+    # Image pull and container start are separate so services will be started in time for tests.
+    - docker-compose pull
     - docker-compose up -d
 script:
     - make tests
