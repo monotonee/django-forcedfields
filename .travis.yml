@@ -23,6 +23,7 @@ before_script:
     # Image pull and container start are separate so services will be started in time for tests.
     - docker-compose pull
     - docker-compose up -d
-    # use nc
+    - while ! nc -z 127.0.0.1 3306; do sleep 1.0; done
+    - while ! nc -z 127.0.0.1 5432; do sleep 1.0; done
 script:
     - make tests
