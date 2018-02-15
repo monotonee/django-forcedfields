@@ -19,6 +19,9 @@ services:
     # I'm not sure what point the "services" key serves if MySQL, PostgreSQL, and Docker are already
     # installed and active by default. Just going to roll with it.
     - docker
+# Warning: Sudo and/or the Docker service cause job to run in virtual machine instead of container.
+# https://docs.travis-ci.com/user/reference/overview/
+sudo: true
 before_install:
     # Latest docker-compose is a dev dependency and is installed from PyPI in the install phase.
     - sudo rm /usr/local/bin/docker-compose
@@ -28,7 +31,7 @@ install:
     - pip install -e ./src[dev]
 before_script:
     # Apparently, Travis CI starts database services by default. This interferes with port binding.
-    - sudo service mysql stop
+    # - sudo service mysql stop
     - sudo service postgresql stop
     # Image pull and container start are separate so services will be started in time for tests.
     - docker-compose pull
