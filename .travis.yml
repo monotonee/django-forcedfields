@@ -6,13 +6,15 @@ language: python
 python:
     - "3.6"
 addons:
-  apt:
-    packages:
-        # Update Docker engine.
-        # https://docs.travis-ci.com/user/docker/#Installing-a-newer-Docker-version
-        - docker-ce
-        - mysql-client
-        - postgresql-client
+    apt:
+        sources:
+            - mysql-5.7-trusty
+        packages:
+            # Update Docker engine.
+            # https://docs.travis-ci.com/user/docker/#Installing-a-newer-Docker-version
+            - docker-ce
+            - mysql-client
+            - postgresql-client
 services:
     # I'm not sure what point the "services" key serves if MySQL, PostgreSQL, and Docker are already
     # installed and active by default. Just going to roll with it.
