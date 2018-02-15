@@ -8,6 +8,7 @@ python:
 addons:
     apt:
         sources:
+            # https://docs.travis-ci.com/user/database-setup/#MySQL-5.7
             - mysql-5.7-trusty
         packages:
             # Update Docker engine.
@@ -19,7 +20,7 @@ services:
     # I'm not sure what point the "services" key serves if MySQL, PostgreSQL, and Docker are already
     # installed and active by default. Just going to roll with it.
     - docker
-# Warning: Sudo and/or the Docker service cause job to run in virtual machine instead of container.
+# Warning: sudo and/or the Docker service cause job to run in virtual machine instead of container.
 # https://docs.travis-ci.com/user/reference/overview/
 sudo: true
 before_install:
@@ -31,10 +32,9 @@ install:
     - pip install -e ./src[dev]
 before_script:
     # Apparently, Travis CI starts database services by default. This interferes with port binding.
-    # - sudo service mysql stop
+    # MySQL, however, will already be stopped. The explicit MySQL APT source prevents default
+    # version from starting and the latest mysql-server package was not installed.
     - sudo service postgresql stop
-    # Image pull and container start are separate so services will be started in time for tests.
-    - docker-compose pull
     - docker-compose up -d
     - while ! mysqladmin ping --host=127.0.0.1 --port=3306 --silent; do sleep 1; done
     - while ! pg_isready -q -h 127.0.0.1 -p 5432 -t 5; do sleep 1; done
