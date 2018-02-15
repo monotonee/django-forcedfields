@@ -4,6 +4,10 @@ django-forcedfields
 
 .. image:: https://img.shields.io/pypi/v/django-forcedfields.svg
    :target: https://pypi.python.org/pypi/django-forcedfields
+   :align: left
+.. image:: https://travis-ci.org/monotonee/django-forcedfields.svg?branch=master
+   :target: https://travis-ci.org/monotonee/django-forcedfields
+   :align: right
 
 *******
 Summary
