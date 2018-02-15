@@ -8,13 +8,21 @@ python:
 addons:
   apt:
     packages:
-      - docker-ce
+        # Update Docker engine.
+        # https://docs.travis-ci.com/user/docker/#Installing-a-newer-Docker-version
+        - docker-ce
+        - mysql-client
+        - postgresql-client
 services:
+    # I'm not sure what point the "services" key serves if MySQL, PostgreSQL, and Docker are already
+    # installed and active by default. Just going to roll with it.
     - docker
 before_install:
     # Latest docker-compose is a dev dependency and is installed from PyPI in the install phase.
     - sudo rm /usr/local/bin/docker-compose
 install:
+    # The Makefile recipe to install dependencies installs them non-globally. Travis CI requires
+    # global: "User site-packages are not visible in this virtualenv."
     - pip install -e ./src[dev]
 before_script:
     # Apparently, Travis CI starts database services by default. This interferes with port binding.
@@ -23,7 +31,7 @@ before_script:
     # Image pull and container start are separate so services will be started in time for tests.
     - docker-compose pull
     - docker-compose up -d
-    - while ! nc -z 127.0.0.1 3306; do sleep 1.0; done
-    - while ! nc -z 127.0.0.1 5432; do sleep 1.0; done
+    - while ! mysqladmin ping --host=127.0.0.1 --port=3306 --silent; do sleep 1; done
+    - while ! pg_isready -q -h 127.0.0.1 -p 5432 -t 5; do sleep 1; done
 script:
     - make tests
