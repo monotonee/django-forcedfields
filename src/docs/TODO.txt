@@ -1,3 +1,7 @@
+Add fields:
+    Unsigned django.db.models.AutoField. Auto-increment fields will (should) never be negative.
+
+
 Make note in README that MariaDB places parenthesis after functions in information_schema?
     Alternately, normalize table schema tests by stripping parentheses.
     ======================================================================
